@@ -19,6 +19,7 @@ entities:
     type: account-number
     description: Customer's account number (10-digit)
     examples: ["0412345678", "0498765432"]
+    redact: true
     validation:
       pattern: "^\\d{10}$"
 
@@ -26,16 +27,49 @@ entities:
     type: date
     description: Customer's date of birth for identity verification
     examples: ["15 March 1985", "1985-03-15"]
+    redact: true
 
   dispute_type:
     type: enum
     description: Category of the billing dispute
     values:
-      - incorrect-charge          # Charge customer doesn't recognise
-      - duplicate-charge          # Same charge appears twice
-      - service-not-received      # Billed for service that wasn't delivered
-      - plan-change-discrepancy   # New plan rate doesn't match what was agreed
-      - international-roaming     # Unexpected roaming charges
+      - value: incorrect-charge
+        synonyms:
+          - incorrect charge
+          - wrong charge
+          - charge I don't recognise
+          - charge I don't recognize
+          - unexpected charge
+          - charge that's wrong
+          - mistake on my bill
+      - value: duplicate-charge
+        synonyms:
+          - duplicate charge
+          - charged twice
+          - double charge
+          - same charge twice
+          - billed twice
+      - value: service-not-received
+        synonyms:
+          - service not received
+          - didn't receive the service
+          - never got the service
+          - billed for something I didn't get
+          - charged for service not provided
+      - value: plan-change-discrepancy
+        synonyms:
+          - plan change
+          - wrong plan rate
+          - plan discount not applied
+          - new plan price wrong
+          - rate change issue
+      - value: international-roaming
+        synonyms:
+          - roaming charges
+          - international roaming
+          - overseas charges
+          - roaming fees
+          - data roaming
       - other
 
   dispute_amount:

@@ -55,16 +55,53 @@
           },
           "values": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "Required when type is 'enum'."
+            "description": "Required when type is 'enum'. Each value can have synonyms for NLU recognition.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "description": "Simple value with no synonyms."
+                },
+                {
+                  "type": "object",
+                  "required": ["value"],
+                  "additionalProperties": false,
+                  "description": "Value with synonyms. Deployers map all synonyms to the canonical value.",
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "description": "Canonical value returned by the platform."
+                    },
+                    "synonyms": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": { "type": "string" },
+                      "description": "Alternative phrasings that resolve to this value. Maps to EntityType synonyms (CX) and Lexicon keyphrases (Cognigy)."
+                    }
+                  }
+                }
+              ]
+            }
           },
           "description": { "type": "string" },
           "examples": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": { "type": "string" },
+            "description": "Example values for documentation. Not used for NLU — use synonyms for recognition variants."
+          },
+          "isList": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, the agent collects multiple values for this entity (e.g. selecting several affected months). Maps to isList on CX parameters and list-type slots in Cognigy."
+          },
+          "redact": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, values are masked in platform logs and transcripts. Set for PII: DOB, account numbers, payment details. Maps to redact on CX parameters and data privacy settings in Cognigy."
           },
           "validation": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
               "pattern": { "type": "string" },
               "min": { "type": "number" },

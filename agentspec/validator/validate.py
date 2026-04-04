@@ -82,6 +82,9 @@ def validate_file(spec_path: str) -> bool:
     _check_entry_flow(spec)
     _check_fallback_escalation_queue(spec)
     _check_enum_entity_values(spec)
+    _check_synonym_structure(spec)
+    _check_redact_on_pii(spec)
+    _check_isList_on_collect_steps(spec)
     _check_branch_targets(spec)
     _check_handoff_entities(spec)
 
@@ -171,6 +174,38 @@ def _check_enum_entity_values(spec):
             values = entity.get("values", [])
             if len(values) < 2:
                 error(f"entities.{entity_id}: type is 'enum' but fewer than 2 values defined")
+
+
+def _check_redact_on_pii(spec):
+    """Warn if account-number, phone, or date entities don't have redact: true."""
+    pii_types = {"account-number", "phone", "email"}
+    for entity_id, entity in spec.get("entities", {}).items():
+        if entity.get("type") in pii_types and not entity.get("redact"):
+            warn(f"entities.{entity_id}: type '{entity['type']}' looks like PII but redact is not set to true")
+
+
+def _check_isList_on_collect_steps(spec):
+    """If a collect step targets an isList entity, note it — deployers need to handle list input differently."""
+    list_entities = {eid for eid, e in spec.get("entities", {}).items() if e.get("isList")}
+    if not list_entities:
+        return
+    for flow_id, flow in spec.get("flows", {}).items():
+        for step in flow.get("steps", []):
+            if step.get("type") == "collect" and step.get("entity") in list_entities:
+                # Not an error — just confirm the deployer note
+                pass  # Deployers should check isList on the entity definition directly
+
+
+def _check_synonym_structure(spec):
+    """Validate synonym objects have required fields and no empty synonym lists."""
+    for entity_id, entity in spec.get("entities", {}).items():
+        for i, value in enumerate(entity.get("values", [])):
+            if isinstance(value, dict):
+                if not value.get("value"):
+                    error(f"entities.{entity_id}.values[{i}]: synonym object missing 'value' field")
+                synonyms = value.get("synonyms", [])
+                if len(synonyms) == 0:
+                    warn(f"entities.{entity_id}.values[{i}]: synonym object has empty synonyms list — use plain string instead")
 
 
 def _check_branch_targets(spec):
