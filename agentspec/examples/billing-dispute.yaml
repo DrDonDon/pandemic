@@ -1,0 +1,373 @@
+apiVersion: agentspec/v1
+kind: Agent
+
+metadata:
+  name: billing-dispute
+  description: >
+    Handles inbound customer billing dispute requests. Identifies the customer,
+    captures the dispute details, verifies against the billing system, and either
+    auto-resolves small disputes or escalates to the billing specialists queue.
+  version: "1.0.0"
+  owner: ai-platform-team
+  tags: [billing, dispute, customer-care, tier-1]
+
+# ─── ENTITIES ────────────────────────────────────────────────────────────────
+# What data the agent works with. No platform assumptions — no "slots" vs "parameters".
+
+entities:
+  account_number:
+    type: account-number
+    description: Customer's account number (10-digit)
+    examples: ["0412345678", "0498765432"]
+    validation:
+      pattern: "^\\d{10}$"
+
+  verification_dob:
+    type: date
+    description: Customer's date of birth for identity verification
+    examples: ["15 March 1985", "1985-03-15"]
+
+  dispute_type:
+    type: enum
+    description: Category of the billing dispute
+    values:
+      - incorrect-charge          # Charge customer doesn't recognise
+      - duplicate-charge          # Same charge appears twice
+      - service-not-received      # Billed for service that wasn't delivered
+      - plan-change-discrepancy   # New plan rate doesn't match what was agreed
+      - international-roaming     # Unexpected roaming charges
+      - other
+
+  dispute_amount:
+    type: number
+    description: Dollar amount the customer is disputing (AUD)
+    validation:
+      min: 0.01
+      max: 10000
+
+  billing_period:
+    type: string
+    description: The bill date or period the dispute relates to
+    examples: ["March 2026", "last month", "the bill I got on the 1st"]
+
+  dispute_reference:
+    type: string
+    description: Reference number for the created dispute ticket (system-populated)
+
+  account_status:
+    type: enum
+    description: Account status retrieved from billing system (system-populated)
+    values: [active, suspended, cancelled, pending]
+
+  previous_dispute_count:
+    type: number
+    description: Number of disputes lodged by this account in last 90 days (system-populated)
+
+# ─── INTENTS ─────────────────────────────────────────────────────────────────
+# What users can say to trigger flows. Maps to intents in NLU platforms,
+# journey triggers in Sierra.
+
+intents:
+  dispute-bill:
+    description: Customer wants to dispute a charge on their bill
+    triggers_flow: identify-customer
+    examples:
+      - "I want to dispute a charge"
+      - "There's something wrong on my bill"
+      - "I've been charged incorrectly"
+      - "I don't recognise this charge"
+      - "I want to raise a billing dispute"
+      - "Can you help me with a billing error"
+      - "I was overcharged"
+      - "This charge isn't right"
+
+  cancel-dispute:
+    description: Customer wants to cancel or withdraw a dispute in progress
+    triggers_flow: cancel-dispute
+    examples:
+      - "Never mind, I'll sort it myself"
+      - "Cancel the dispute"
+      - "I want to withdraw my dispute"
+      - "Forget it"
+
+  check-dispute-status:
+    description: Customer is asking about the status of an existing dispute
+    triggers_flow: check-dispute-status
+    examples:
+      - "What happened with my dispute"
+      - "Has my dispute been resolved"
+      - "I raised a dispute last week, where is it"
+      - "Check my dispute status"
+
+# ─── INTEGRATIONS ────────────────────────────────────────────────────────────
+# Backend systems. Never hardcode URLs — use environment variables.
+
+integrations:
+  billing-api:
+    type: rest-api
+    description: Core billing system — account lookup, dispute creation, status checks
+    base_url_env: BILLING_API_BASE_URL
+    auth: oauth2
+    operations:
+      verify-account:
+        description: Verify account number and DOB, return account status and details
+        input: [account_number, verification_dob]
+        output: [account_status, previous_dispute_count]
+      create-dispute:
+        description: Lodge a new billing dispute and return a reference number
+        input: [account_number, dispute_type, dispute_amount, billing_period]
+        output: [dispute_reference]
+      get-dispute-status:
+        description: Retrieve status of an existing dispute by reference
+        input: [dispute_reference]
+        output: []
+      auto-credit:
+        description: Apply an immediate account credit for disputes under threshold
+        input: [account_number, dispute_amount, dispute_reference]
+        output: []
+
+# ─── FLOWS ───────────────────────────────────────────────────────────────────
+# Conversational sequences. Topology-neutral.
+#
+# Sierra reads these as journeys within a single agent.
+# Agent Studio reads these as separate specialised agents with handoff contracts.
+# Cognigy reads these as flows/intents within a single bot.
+#
+# The deployer handles the structural translation. The spec just describes
+# what happens, in what order, and under what conditions.
+
+flows:
+
+  identify-customer:
+    description: >
+      Collect and verify customer identity before any account action.
+      This is the mandatory entry point for all billing dispute interactions.
+    entry: true
+    collects: [account_number, verification_dob]
+    steps:
+      - id: greet
+        type: message
+        text: >
+          Hi, I can help you with a billing dispute. First I'll need to verify
+          your account. Can you please give me your 10-digit account number?
+
+      - id: collect-account
+        type: collect
+        entity: account_number
+        prompt: "What is your account number?"
+
+      - id: collect-dob
+        type: collect
+        entity: verification_dob
+        prompt: "And your date of birth for verification?"
+
+      - id: verify-identity
+        type: call-integration
+        integration: billing-api
+        operation: verify-account
+
+      - id: check-account-status
+        type: branch
+        condition: "account_status == 'active'"
+        then: dispute-intake
+        else: handle-inactive-account
+
+  handle-inactive-account:
+    description: >
+      Account is suspended or cancelled. Dispute cannot be lodged through
+      self-service for inactive accounts — escalate to a specialist.
+    steps:
+      - id: inactive-message
+        type: message
+        text: >
+          I can see your account is currently not active. I'm not able to process
+          a billing dispute through self-service for inactive accounts.
+          Let me connect you with a specialist who can help.
+
+      - id: escalate-inactive
+        type: escalate
+        queue: billing-specialists
+        priority: normal
+        handoff_entities: [account_number, account_status]
+
+  dispute-intake:
+    description: >
+      Capture the details of the billing dispute. Checks for repeat dispute
+      behaviour and routes accordingly.
+    collects: [dispute_type, dispute_amount, billing_period]
+    steps:
+      - id: check-dispute-history
+        type: branch
+        condition: "previous_dispute_count >= 3"
+        then: escalate-repeat-disputer
+        else: collect-dispute-type
+
+      - id: collect-dispute-type
+        type: collect
+        entity: dispute_type
+        prompt: >
+          What type of billing issue are you experiencing? You can say things like:
+          incorrect charge, duplicate charge, service not received, plan change
+          discrepancy, international roaming, or other.
+
+      - id: collect-dispute-amount
+        type: collect
+        entity: dispute_amount
+        prompt: "What is the dollar amount you're disputing?"
+
+      - id: collect-billing-period
+        type: collect
+        entity: billing_period
+        prompt: "Which bill or billing period does this relate to?"
+
+      - id: confirm-dispute-details
+        type: confirm
+        prompt: >
+          Let me confirm: you're disputing a {dispute_type} of ${dispute_amount}
+          on your {billing_period} bill. Is that correct?
+
+      - id: create-dispute-record
+        type: call-integration
+        integration: billing-api
+        operation: create-dispute
+
+      - id: route-by-amount
+        type: branch
+        condition: "dispute_amount <= 150"
+        then: auto-resolve
+        else: escalate-high-value
+
+  auto-resolve:
+    description: >
+      For disputes of $150 or under, apply an immediate credit and close the
+      interaction. This covers the majority of billing disputes by volume.
+    steps:
+      - id: apply-credit
+        type: call-integration
+        integration: billing-api
+        operation: auto-credit
+
+      - id: confirm-resolution
+        type: message
+        text: >
+          Great news. I've applied a credit of ${dispute_amount} to your account.
+          Your dispute reference is {dispute_reference}. The credit will appear
+          on your next bill. Is there anything else I can help you with?
+
+      - id: end-resolved
+        type: end
+        text: "Thank you for contacting us. Have a great day."
+
+  escalate-high-value:
+    description: >
+      Disputes over $150 require specialist review. Hand off to the billing
+      specialists queue with full context.
+    steps:
+      - id: explain-escalation
+        type: message
+        text: >
+          Because this dispute is for ${dispute_amount}, it needs to be reviewed
+          by one of our billing specialists. Your dispute has been lodged
+          (reference: {dispute_reference}) and a specialist will be in touch
+          within 2 business days. Would you prefer to wait and speak to someone
+          now, or have us call you back?
+
+      - id: escalate-to-specialist
+        type: escalate
+        queue: billing-specialists
+        priority: high
+        handoff_entities:
+          - account_number
+          - dispute_type
+          - dispute_amount
+          - billing_period
+          - dispute_reference
+
+  escalate-repeat-disputer:
+    description: >
+      Customers with 3+ disputes in 90 days are flagged for specialist review
+      before any new dispute is processed. Fraud and goodwill policy check.
+    steps:
+      - id: explain-review
+        type: message
+        text: >
+          I can see you've had a few billing queries with us recently. To make
+          sure we resolve this properly, I'd like to connect you with a specialist
+          who can review your account and help with this dispute.
+
+      - id: escalate-flagged
+        type: escalate
+        queue: billing-specialists
+        priority: urgent
+        handoff_entities: [account_number, previous_dispute_count]
+
+  check-dispute-status:
+    description: >
+      Look up the status of an existing dispute by reference number.
+    collects: [dispute_reference]
+    steps:
+      - id: collect-reference
+        type: collect
+        entity: dispute_reference
+        prompt: "What's your dispute reference number? It starts with DR."
+
+      - id: lookup-status
+        type: call-integration
+        integration: billing-api
+        operation: get-dispute-status
+
+      - id: report-status
+        type: message
+        text: "I've found your dispute {dispute_reference}. Let me get the details for you."
+
+      - id: end-status-check
+        type: end
+        text: "Is there anything else I can help you with today?"
+
+  cancel-dispute:
+    description: >
+      Customer wants to withdraw a dispute. Escalate to a specialist — this
+      cannot be done through self-service as it may require reversal of credits.
+    steps:
+      - id: explain-cancel
+        type: message
+        text: >
+          To cancel a dispute, I'll need to connect you with a specialist.
+          They can process the withdrawal and let you know if any credits
+          need to be reversed.
+
+      - id: escalate-cancel
+        type: escalate
+        queue: billing-specialists
+        priority: normal
+        handoff_entities: [account_number]
+
+# ─── FALLBACK ────────────────────────────────────────────────────────────────
+
+fallback:
+  unrecognized_input: repeat-prompt
+  max_retries: 3
+  final_action: escalate
+  escalation_queue: billing-specialists
+
+# ─── PLATFORM OVERRIDES ──────────────────────────────────────────────────────
+# Additive only. These don't change the canonical spec — they add
+# platform-specific configuration the deployer needs.
+
+overrides:
+  sierra:
+    agent_name: "Billing Dispute Agent"
+    flow_name_prefix: "BD"    # Sierra journey names will be BD-identify-customer, BD-dispute-intake, etc.
+    voice_channel: true
+    digital_channel: true
+
+  google-agent-studio:
+    entry_agent_display_name: "Billing Dispute - Customer Identification"
+    location: "australia-southeast1"
+    time_zone: "Australia/Sydney"
+    default_language_code: "en-AU"
+
+  cognigy:
+    flow_id: "billing_dispute_v1"
+    nlu_connector: "cognigy-nlu"
+    voice_channel: true

@@ -1,0 +1,216 @@
+apiVersion: agentspec/v1
+kind: Agent
+
+metadata:
+  name: account-inquiry
+  description: >
+    Handles inbound customer account inquiries: balance checks, usage summaries,
+    plan details, and payment history. Read-only — no account changes.
+    Escalates to account specialists for anything requiring modification.
+  version: "1.0.0"
+  owner: ai-platform-team
+  tags: [account, inquiry, self-service, tier-1]
+
+entities:
+  account_number:
+    type: account-number
+    description: Customer's account number (10-digit)
+    examples: ["0412345678"]
+    validation:
+      pattern: "^\\d{10}$"
+
+  verification_dob:
+    type: date
+    description: Customer's date of birth for identity verification
+    examples: ["15 March 1985"]
+
+  inquiry_type:
+    type: enum
+    description: What the customer wants to know about their account
+    values:
+      - current-balance
+      - payment-history
+      - data-usage
+      - plan-details
+      - outstanding-amount
+
+  account_status:
+    type: enum
+    description: Account status (system-populated)
+    values: [active, suspended, cancelled, pending]
+
+  current_balance:
+    type: number
+    description: Current account balance in AUD (system-populated)
+
+  plan_name:
+    type: string
+    description: Current plan name (system-populated)
+
+  data_used_gb:
+    type: number
+    description: Data used this billing cycle in GB (system-populated)
+
+  data_allowance_gb:
+    type: number
+    description: Total data allowance this billing cycle in GB (system-populated)
+
+intents:
+  check-account:
+    description: Customer wants general account information
+    triggers_flow: identify-customer
+    examples:
+      - "I want to check my account"
+      - "What's my current balance"
+      - "How much data do I have left"
+      - "What plan am I on"
+      - "Show me my payment history"
+      - "What do I owe"
+      - "Can you tell me about my account"
+      - "I need my account details"
+
+integrations:
+  account-api:
+    type: rest-api
+    description: Account management system — read-only account and usage data
+    base_url_env: ACCOUNT_API_BASE_URL
+    auth: oauth2
+    operations:
+      verify-account:
+        description: Verify identity and return account status
+        input: [account_number, verification_dob]
+        output: [account_status, plan_name]
+      get-balance:
+        description: Retrieve current balance and outstanding amount
+        input: [account_number]
+        output: [current_balance]
+      get-usage:
+        description: Retrieve data usage for current billing cycle
+        input: [account_number]
+        output: [data_used_gb, data_allowance_gb]
+
+flows:
+
+  identify-customer:
+    description: Collect and verify customer identity before showing account data.
+    entry: true
+    collects: [account_number, verification_dob]
+    steps:
+      - id: greet
+        type: message
+        text: >
+          Hi, I can help you with your account details. I'll need to verify
+          your account first. What's your 10-digit account number?
+
+      - id: collect-account
+        type: collect
+        entity: account_number
+        prompt: "What is your account number?"
+
+      - id: collect-dob
+        type: collect
+        entity: verification_dob
+        prompt: "And your date of birth for verification?"
+
+      - id: verify-identity
+        type: call-integration
+        integration: account-api
+        operation: verify-account
+
+      - id: check-account-active
+        type: branch
+        condition: "account_status == 'active'"
+        then: inquiry-menu
+        else: handle-inactive-account
+
+  handle-inactive-account:
+    description: Account not active — can't show data, escalate.
+    steps:
+      - id: inactive-message
+        type: message
+        text: >
+          I can see your account is currently not active. I'll connect you
+          with a specialist who can help you.
+
+      - id: escalate-inactive
+        type: escalate
+        queue: account-specialists
+        priority: normal
+        handoff_entities: [account_number, account_status]
+
+  inquiry-menu:
+    description: Ask what the customer wants to know and route to the right info flow.
+    collects: [inquiry_type]
+    steps:
+      - id: ask-inquiry-type
+        type: collect
+        entity: inquiry_type
+        prompt: >
+          I've verified your account. What would you like to know?
+          I can help with your current balance, payment history, data usage,
+          plan details, or outstanding amount.
+
+      - id: route-inquiry
+        type: branch
+        condition: "inquiry_type == 'data-usage'"
+        then: data-usage
+        else: general-account-info
+
+  data-usage:
+    description: Show current billing cycle data usage.
+    steps:
+      - id: fetch-usage
+        type: call-integration
+        integration: account-api
+        operation: get-usage
+
+      - id: report-usage
+        type: message
+        text: >
+          You've used {data_used_gb}GB of your {data_allowance_gb}GB allowance
+          this billing cycle.
+
+      - id: end-usage
+        type: end
+        text: "Is there anything else I can help you with?"
+
+  general-account-info:
+    description: Show balance and plan details.
+    steps:
+      - id: fetch-balance
+        type: call-integration
+        integration: account-api
+        operation: get-balance
+
+      - id: report-info
+        type: message
+        text: >
+          You're on the {plan_name} plan. Your current balance is ${current_balance}.
+
+      - id: end-info
+        type: end
+        text: "Is there anything else I can help you with?"
+
+fallback:
+  unrecognized_input: rephrase-prompt
+  max_retries: 3
+  final_action: escalate
+  escalation_queue: account-specialists
+
+overrides:
+  sierra:
+    agent_name: "Account Inquiry Agent"
+    flow_name_prefix: "AI"
+    voice_channel: true
+    digital_channel: true
+
+  google-agent-studio:
+    entry_agent_display_name: "Account Inquiry - Customer Identification"
+    location: "australia-southeast1"
+    time_zone: "Australia/Sydney"
+    default_language_code: "en-AU"
+
+  cognigy:
+    flow_id: "account_inquiry_v1"
+    nlu_connector: "cognigy-nlu"
+    voice_channel: false
