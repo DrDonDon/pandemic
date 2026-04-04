@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentSpec — Define once. Deploy everywhere.</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #ff7b72;
+    --accent4: #d2a8ff;
+    --yellow: #e3b341;
+    --code-bg: #161b22;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  .nav-logo { font-size: 15px; font-weight: 700; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+  .nav-logo span { color: var(--accent); }
+  .nav-badge { font-size: 11px; background: var(--bg3); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: 2px 8px; }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  @media(max-width:600px) { .nav-links { display: none; } }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 80px 24px 64px;
+    max-width: 860px; margin: 0 auto;
+    text-align: center;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.2);
+    border-radius: 20px; padding: 4px 12px; margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 6vw, 56px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -.02em;
+    margin-bottom: 20px;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p {
+    font-size: clamp(16px, 2.5vw, 19px);
+    color: var(--muted); max-width: 600px; margin: 0 auto 36px;
+    line-height: 1.7;
+  }
+  .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    text-decoration: none; transition: all .2s; cursor: pointer; border: none;
+  }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-primary:hover { background: #79c0ff; }
+  .btn-secondary { background: var(--bg2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── PIPELINE DIAGRAM ── */
+  .pipeline {
+    max-width: 640px; margin: 60px auto 0;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+  }
+  .pipeline-file { color: var(--yellow); font-weight: 700; margin-bottom: 12px; font-size: 15px; }
+  .pipeline-arrow { color: var(--muted); margin: 4px 0 4px 20px; }
+  .pipeline-arrow span { color: var(--accent2); font-weight: 600; }
+  .pipeline-arrow .platform { color: var(--accent4); }
+  .pipeline-arrow .wip { color: var(--muted); font-size: 11px; }
+
+  /* ── SECTION ── */
+  section { padding: 72px 24px; max-width: 900px; margin: 0 auto; }
+  section + section { border-top: 1px solid var(--border); }
+  .section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 12px;
+  }
+  h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 700; margin-bottom: 16px; line-height: 1.2; }
+  h3 { font-size: 18px; font-weight: 600; margin: 32px 0 10px; color: var(--text); }
+  p { color: var(--muted); line-height: 1.75; margin-bottom: 16px; }
+  p strong { color: var(--text); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: rgba(88,166,255,.06); border: 1px solid rgba(88,166,255,.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px; padding: 16px 20px; margin: 24px 0;
+    font-size: 15px; color: var(--text); line-height: 1.7;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td code { background: var(--bg3); border-radius: 4px; padding: 2px 6px; font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent4); }
+
+  /* ── CODE ── */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden; margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: var(--bg3); border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .code-filename { font-size: 12px; color: var(--accent4); }
+  pre { padding: 20px; overflow-x: auto; line-height: 1.65; }
+  code { font-family: inherit; }
+
+  /* syntax highlighting */
+  .k  { color: #ff7b72; } /* keyword */
+  .s  { color: #a5d6ff; } /* string */
+  .c  { color: #8b949e; font-style: italic; } /* comment */
+  .n  { color: #79c0ff; } /* name/key */
+  .v  { color: #a5d6ff; } /* value */
+  .op { color: #e3b341; } /* operator/symbol */
+  .t  { color: #3fb950; } /* type */
+  .m  { color: #f2cc60; } /* number */
+  .p  { color: #d2a8ff; } /* property */
+
+  /* ── SCHEMA CARDS ── */
+  .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin: 24px 0; }
+  .schema-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; transition: border-color .2s;
+  }
+  .schema-card:hover { border-color: var(--accent); }
+  .schema-card h4 { font-size: 14px; font-weight: 700; color: var(--accent4); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .schema-card h4 .icon { font-size: 16px; }
+  .schema-card p { font-size: 13px; margin: 0; color: var(--muted); }
+
+  /* ── STEPS ── */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step { display: flex; gap: 20px; padding: 24px 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  .step-num {
+    flex-shrink: 0; width: 32px; height: 32px;
+    background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.25);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent); margin-top: 2px;
+  }
+  .step-body h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .step-body p { font-size: 14px; margin: 0; }
+  .step-body code { background: var(--bg3); border-radius: 4px; padding: 1px 6px; font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent2); }
+
+  /* ── STATUS BADGES ── */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 20px; padding: 2px 8px; }
+  .badge-done { background: rgba(63,185,80,.15); color: var(--accent2); border: 1px solid rgba(63,185,80,.3); }
+  .badge-wip  { background: rgba(227,179,65,.12); color: var(--yellow);  border: 1px solid rgba(227,179,65,.3); }
+  .badge-todo { background: rgba(139,148,158,.1); color: var(--muted);   border: 1px solid var(--border); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px; text-align: center;
+    font-size: 13px; color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">
+    <span>AgentSpec</span>
+    <span class="nav-badge">v0.1 prototype</span>
+  </a>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#schema">Schema</a>
+    <a href="#deployers">Deployers</a>
+    <a href="#quickstart">Quickstart</a>
+    <a href="#roadmap">Roadmap</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Open Specification</div>
+  <h1>Define once.<br><em>Deploy everywhere.</em></h1>
+  <p>AgentSpec is to AI agents what Terraform is to cloud infrastructure.
+     Write your agent in YAML. Deploy to Sierra, Cognigy, Google Agent Studio,
+     LangChain, or CrewAI — from a single source of truth.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="#quickstart">Get started</a>
+    <a class="btn btn-secondary" href="#schema">View schema</a>
+  </div>
+
+  <div class="pipeline">
+    <div class="pipeline-file">📄 billing-dispute.yaml</div>
+    <div class="pipeline-arrow">├─▶ <span class="platform">Sierra</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; journey config <span class="wip">(coming soon)</span></div>
+    <div class="pipeline-arrow">├─▶ <span class="platform">Google Agent Studio</span> &nbsp; agent ZIP &nbsp;&nbsp;&nbsp;&nbsp; <span class="wip">(coming soon)</span></div>
+    <div class="pipeline-arrow">├─▶ <span class="platform">Cognigy</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; REST import &nbsp;&nbsp; <span class="wip">(coming soon)</span></div>
+    <div class="pipeline-arrow">├─▶ <span class="platform">LangChain</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span>Python file</span> &nbsp;&nbsp; <span class="wip">✓ working</span></div>
+    <div class="pipeline-arrow">└─▶ <span class="platform">CrewAI</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span>Python file</span> &nbsp;&nbsp; <span class="wip">✓ working</span></div>
+  </div>
+</div>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-label">The Problem</div>
+  <h2>One agent. Three codebases. Three teams.</h2>
+  <p>Large enterprises — telcos, banks, insurers — run customer-facing AI agents on
+     <strong>multiple platforms simultaneously</strong>. A single agent like "billing dispute"
+     might live on Sierra for voice, Google Agent Studio for web flows, and Cognigy for chat.</p>
+  <p>When you update that agent, you need three teams, three separate builds, three rounds
+     of testing. A major update costs hundreds of hours. Platform versions drift apart over time,
+     adding complexity and technical debt.</p>
+
+  <div class="callout">
+    <strong>There is no tool that lets you define an agent once and deploy it everywhere.</strong>
+    AgentSpec is that tool.
+  </div>
+
+  <h3>Why it's hard</h3>
+  <p>The three enterprise platforms have completely different structural models:</p>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Platform</th><th>Model</th><th>Structure</th></tr>
+      <tr><td><strong>Sierra</strong></td><td>Monolithic</td><td>One agent, multiple journeys inside</td></tr>
+      <tr><td><strong>Google Agent Studio</strong></td><td>Microservices</td><td>Many specialised agents that hand off to each other</td></tr>
+      <tr><td><strong>Cognigy</strong></td><td>Hybrid</td><td>Flows within flows, configurable depth</td></tr>
+    </table>
+  </div>
+
+  <p>A schema shaped like Sierra's topology fails on Agent Studio. A schema shaped like Cognigy's
+     node model fails on Sierra. So AgentSpec describes <strong>what</strong> the agent does —
+     intents, entities, flows, escalations — and each deployer handles the structural translation.
+     Same insight as Terraform: HCL describes a database, not an RDS instance.</p>
+</section>
+
+<!-- SCHEMA -->
+<section id="schema">
+  <div class="section-label">The Schema</div>
+  <h2>Six sections. No platform assumptions.</h2>
+  <p>A spec file is a YAML document with six top-level keys. The schema is
+     <strong>capability-centric, not topology-centric</strong> — it describes what
+     the agent does, not how any given platform would wire it up.</p>
+
+  <div class="schema-grid">
+    <div class="schema-card">
+      <h4><span class="icon">🗂</span> entities</h4>
+      <p>Data the agent works with. Typed, with optional PII redaction and validation patterns.</p>
+    </div>
+    <div class="schema-card">
+      <h4><span class="icon">💬</span> intents</h4>
+      <p>What users can say. Training examples + which flow to trigger.</p>
+    </div>
+    <div class="schema-card">
+      <h4><span class="icon">🔌</span> integrations</h4>
+      <p>Named backend systems. Env-var URLs, auth type, typed operations.</p>
+    </div>
+    <div class="schema-card">
+      <h4><span class="icon">🔄</span> flows</h4>
+      <p>Conversational sequences as typed steps. collect, branch, call-integration, escalate…</p>
+    </div>
+    <div class="schema-card">
+      <h4><span class="icon">🛡</span> fallback</h4>
+      <p>Global recovery: max retries, unrecognised input behaviour, escalation queue.</p>
+    </div>
+    <div class="schema-card">
+      <h4><span class="icon">⚙️</span> overrides</h4>
+      <p>Per-platform config that doesn't belong in the canonical spec. Additive only.</p>
+    </div>
+  </div>
+
+  <h3>entities — what data the agent works with</h3>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">yaml</span>
+      <span class="code-filename">billing-dispute.yaml</span>
+    </div>
+    <pre><code><span class="n">entities</span><span class="op">:</span>
+  <span class="n">account_number</span><span class="op">:</span>
+    <span class="n">type</span><span class="op">:</span> <span class="t">account-number</span>
+    <span class="n">redact</span><span class="op">:</span> <span class="k">true</span>          <span class="c"># PII masking in platform logs</span>
+    <span class="n">validation</span><span class="op">:</span>
+      <span class="n">pattern</span><span class="op">:</span> <span class="s">"^\d{10}$"</span>
+
+  <span class="n">dispute_type</span><span class="op">:</span>
+    <span class="n">type</span><span class="op">:</span> <span class="t">enum</span>
+    <span class="n">values</span><span class="op">:</span>
+      <span class="op">-</span> <span class="n">value</span><span class="op">:</span> <span class="s">incorrect-charge</span>
+        <span class="n">synonyms</span><span class="op">:</span>
+          <span class="op">-</span> <span class="s">wrong charge</span>
+          <span class="op">-</span> <span class="s">charge I don't recognise</span>
+          <span class="op">-</span> <span class="s">unexpected charge</span>
+      <span class="op">-</span> <span class="n">value</span><span class="op">:</span> <span class="s">duplicate-charge</span>
+        <span class="n">synonyms</span><span class="op">:</span>
+          <span class="op">-</span> <span class="s">charged twice</span>
+          <span class="op">-</span> <span class="s">billed twice</span></code></pre>
+  </div>
+
+  <h3>flows — conversational sequences</h3>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">yaml</span>
+      <span class="code-filename">billing-dispute.yaml</span>
+    </div>
+    <pre><code><span class="n">flows</span><span class="op">:</span>
+  <span class="n">dispute-intake</span><span class="op">:</span>
+    <span class="n">entry</span><span class="op">:</span> <span class="k">false</span>
+    <span class="n">steps</span><span class="op">:</span>
+      <span class="op">-</span> <span class="n">id</span><span class="op">:</span> <span class="s">check-dispute-history</span>
+        <span class="n">type</span><span class="op">:</span> <span class="t">branch</span>
+        <span class="n">condition</span><span class="op">:</span> <span class="s">"previous_dispute_count >= 3"</span>
+        <span class="n">then</span><span class="op">:</span> <span class="s">escalate-repeat-disputer</span>
+        <span class="n">else</span><span class="op">:</span> <span class="s">collect-dispute-type</span>
+
+      <span class="op">-</span> <span class="n">id</span><span class="op">:</span> <span class="s">collect-dispute-type</span>
+        <span class="n">type</span><span class="op">:</span> <span class="t">collect</span>
+        <span class="n">entity</span><span class="op">:</span> <span class="s">dispute_type</span>
+        <span class="n">prompt</span><span class="op">:</span> <span class="s">"What type of billing issue are you experiencing?"</span>
+
+      <span class="op">-</span> <span class="n">id</span><span class="op">:</span> <span class="s">create-dispute-record</span>
+        <span class="n">type</span><span class="op">:</span> <span class="t">call-integration</span>
+        <span class="n">integration</span><span class="op">:</span> <span class="s">billing-api</span>
+        <span class="n">operation</span><span class="op">:</span> <span class="s">create-dispute</span>
+
+      <span class="op">-</span> <span class="n">id</span><span class="op">:</span> <span class="s">route-by-amount</span>
+        <span class="n">type</span><span class="op">:</span> <span class="t">branch</span>
+        <span class="n">condition</span><span class="op">:</span> <span class="s">"dispute_amount &lt;= 150"</span>
+        <span class="n">then</span><span class="op">:</span> <span class="s">auto-resolve</span>
+        <span class="n">else</span><span class="op">:</span> <span class="s">escalate-high-value</span></code></pre>
+  </div>
+
+  <h3>Available step types</h3>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Type</th><th>What it does</th></tr>
+      <tr><td><code>collect</code></td><td>Ask for an entity value from the user</td></tr>
+      <tr><td><code>confirm</code></td><td>Read back collected data and ask for confirmation</td></tr>
+      <tr><td><code>call-integration</code></td><td>Call a named backend operation</td></tr>
+      <tr><td><code>branch</code></td><td>Conditional fork on any entity or API output</td></tr>
+      <tr><td><code>handoff-flow</code></td><td>Pass control to another flow, optionally with entities</td></tr>
+      <tr><td><code>escalate</code></td><td>Route to a human agent queue</td></tr>
+      <tr><td><code>message</code></td><td>Send a message with no expected reply</td></tr>
+      <tr><td><code>end</code></td><td>Close the conversation</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- DEPLOYERS -->
+<section id="deployers">
+  <div class="section-label">Deployers</div>
+  <h2>One spec. Multiple targets.</h2>
+  <p>A deployer reads an agentspec YAML file and generates platform-native output.
+     Each deployer handles the structural translation — the spec stays clean.</p>
+
+  <h3>LangChain deployer <span class="badge badge-done">working</span></h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span></div>
+    <pre><code>python agentspec/deployers/render.py --platform langchain agentspec/examples/billing-dispute.yaml</code></pre>
+  </div>
+  <p>Generates a runnable Python file containing:</p>
+  <ul style="color:var(--muted); padding-left:20px; line-height:2;">
+    <li><strong style="color:var(--text)">Pydantic input schemas</strong> for every integration operation — Literal types for enums, ge/le bounds, proper isList typing</li>
+    <li><strong style="color:var(--text)">@tool functions</strong> with typed signatures, auth headers from env vars</li>
+    <li><strong style="color:var(--text)">System prompt</strong> assembled from flows, intents, fallback rules, and a privacy section listing all redact: true entities</li>
+    <li><strong style="color:var(--text)">AgentExecutor</strong> with sliding window memory, model from overrides.langchain</li>
+  </ul>
+
+  <h3>CrewAI deployer <span class="badge badge-done">working</span></h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span></div>
+    <pre><code>python agentspec/deployers/render.py --platform crewai agentspec/examples/billing-dispute.yaml</code></pre>
+  </div>
+  <p>Generates Agents with role/goal/backstory derived from flow structure, Tasks chained
+     sequentially, and a Crew ready to <code>kickoff(inputs={"input": user_input})</code>.</p>
+
+  <h3>Validator</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash</span></div>
+    <pre><code>$ python agentspec/validator/validate.py agentspec/examples/billing-dispute.yaml
+
+<span class="v">✓ examples/billing-dispute.yaml — valid</span></code></pre>
+  </div>
+  <p>Two passes: JSON Schema (types, required fields) then semantic checks — all flow
+     references resolve, exactly one entry flow, PII entities warn if not redacted,
+     escalation steps warn if account_number not in handoff_entities.</p>
+</section>
+
+<!-- QUICKSTART -->
+<section id="quickstart">
+  <div class="section-label">Quickstart</div>
+  <h2>Up and running in 3 steps.</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Install dependencies</h4>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span></div>
+          <pre><code>pip install pyyaml jsonschema</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Validate an example spec</h4>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span></div>
+          <pre><code>python agentspec/validator/validate.py agentspec/examples/billing-dispute.yaml</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Generate a deployer target</h4>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span></div>
+          <pre><code><span class="c"># LangChain</span>
+python agentspec/deployers/render.py --platform langchain agentspec/examples/billing-dispute.yaml
+
+<span class="c"># CrewAI</span>
+python agentspec/deployers/render.py --platform crewai agentspec/examples/billing-dispute.yaml
+
+<span class="c"># Output lands in agentspec/out/</span></code></pre>
+        </div>
+        <p>Set <code>BILLING_API_BASE_URL</code> and <code>BILLING_API_ACCESS_TOKEN</code>,
+           then the generated file runs as-is once you
+           <code>pip install langchain-anthropic</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <div class="section-label">Roadmap</div>
+  <h2>What's built. What's next.</h2>
+
+  <div class="table-wrap">
+    <table>
+      <tr><th>Component</th><th>Status</th><th>Notes</th></tr>
+      <tr><td>JSON Schema + validator</td><td><span class="badge badge-done">Done</span></td><td>Two-pass: schema + semantic checks</td></tr>
+      <tr><td>LangChain deployer</td><td><span class="badge badge-done">Done</span></td><td>Generates runnable Python</td></tr>
+      <tr><td>CrewAI deployer</td><td><span class="badge badge-done">Done</span></td><td>Generates runnable Python</td></tr>
+      <tr><td>Deployer tests</td><td><span class="badge badge-wip">Next</span></td><td>Render examples, assert key strings in output</td></tr>
+      <tr><td>Cognigy deployer</td><td><span class="badge badge-todo">Planned</span></td><td>Public REST API available — need creds + agent export</td></tr>
+      <tr><td>Google Agent Studio deployer</td><td><span class="badge badge-todo">Planned</span></td><td>CX Page grouping logic for sequential collects needs design</td></tr>
+      <tr><td>Sierra deployer</td><td><span class="badge badge-todo">Planned</span></td><td>API docs not public — needs account team access</td></tr>
+      <tr><td>Training phrase annotation</td><td><span class="badge badge-todo">v1.1</span></td><td>Annotate entity spans in training examples</td></tr>
+    </table>
+  </div>
+
+  <h3>Known design gaps</h3>
+  <p><strong>CX Page grouping</strong> — Dialogflow CX uses a state machine (Pages). The CX
+     deployer will need to group consecutive <code>collect</code> steps into a single Page form.
+     Deployer convention, not expressed in the schema.</p>
+  <p><strong>CX webhook tag dispatch</strong> — CX identifies webhook handlers via
+     <code>FulfillmentInfo.tag</code>. The deployer auto-generates tags as
+     <code>{integration-name}-{operation-name}</code>.</p>
+  <p><strong>Training phrase annotation</strong> — both Cognigy and CX support annotating
+     which spans in training phrases map to which entities. Current examples are plain strings.
+     Deferred to v1.1.</p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  AgentSpec — early prototype &nbsp;·&nbsp;
+  Questions? <a href="mailto:">Get in touch</a>
+</footer>
+
+</body>
+</html>

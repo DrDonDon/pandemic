@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentspec.io/schema/v1/agentspec.schema.json",
+  "title": "AgentSpec v1",
+  "description": "Capability-centric schema for defining conversational AI agents across platforms (Sierra, Google Agent Studio, Cognigy).",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "entities", "intents", "flows", "fallback"],
+  "additionalProperties": false,
+
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "agentspec/v1"
+    },
+
+    "kind": {
+      "type": "string",
+      "const": "Agent"
+    },
+
+    "metadata": {
+      "type": "object",
+      "required": ["name", "description", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Kebab-case agent identifier. Used as the basis for platform-native names."
+        },
+        "description": { "type": "string" },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "owner": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "entities": {
+      "type": "object",
+      "description": "Named data types the agent collects from users or systems. Platform-neutral — no slot/entity distinction.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["string", "number", "boolean", "enum", "date", "phone", "email", "account-number"]
+          },
+          "values": {
+            "type": "array",
+            "description": "Required when type is 'enum'. Each value can have synonyms for NLU recognition.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "description": "Simple value with no synonyms."
+                },
+                {
+                  "type": "object",
+                  "required": ["value"],
+                  "additionalProperties": false,
+                  "description": "Value with synonyms. Deployers map all synonyms to the canonical value.",
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "description": "Canonical value returned by the platform."
+                    },
+                    "synonyms": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": { "type": "string" },
+                      "description": "Alternative phrasings that resolve to this value. Maps to EntityType synonyms (CX) and Lexicon keyphrases (Cognigy)."
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": { "type": "string" },
+          "examples": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Example values for documentation. Not used for NLU — use synonyms for recognition variants."
+          },
+          "isList": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, the agent collects multiple values for this entity (e.g. selecting several affected months). Maps to isList on CX parameters and list-type slots in Cognigy."
+          },
+          "redact": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, values are masked in platform logs and transcripts. Set for PII: DOB, account numbers, payment details. Maps to redact on CX parameters and data privacy settings in Cognigy."
+          },
+          "validation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pattern": { "type": "string" },
+              "min": { "type": "number" },
+              "max": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+
+    "intents": {
+      "type": "object",
+      "description": "What users can express. Maps to intents (Cognigy/Agent Studio) or journey triggers (Sierra).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "examples"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string" },
+          "examples": {
+            "type": "array",
+            "minItems": 3,
+            "items": { "type": "string" },
+            "description": "Training utterances. Minimum 3."
+          },
+          "triggers_flow": {
+            "type": "string",
+            "description": "Flow ID this intent routes to. Must match a key in 'flows'."
+          }
+        }
+      }
+    },
+
+    "integrations": {
+      "type": "object",
+      "description": "Named backend systems the agent calls. Referenced by flow steps.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["rest-api", "webhook", "grpc", "internal"]
+          },
+          "description": { "type": "string" },
+          "base_url_env": {
+            "type": "string",
+            "description": "Environment variable holding the base URL. Never hardcode URLs in specs."
+          },
+          "auth": {
+            "type": "string",
+            "enum": ["none", "api-key", "oauth2", "mtls"]
+          },
+          "operations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["description"],
+              "properties": {
+                "description": { "type": "string" },
+                "input": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Entity names required as input."
+                },
+                "output": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Entity names populated from response."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "flows": {
+      "type": "object",
+      "description": "Sequences of conversational steps. Maps to journeys (Sierra), flows (Cognigy), or agents (Agent Studio).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string" },
+          "entry": {
+            "type": "boolean",
+            "description": "If true, this is the top-level flow. Exactly one flow should be the entry point."
+          },
+          "collects": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Entity names collected during this flow. Must match keys in 'entities'."
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "type"],
+              "properties": {
+                "id": { "type": "string" },
+                "type": {
+                  "type": "string",
+                  "enum": ["collect", "confirm", "call-integration", "branch", "handoff-flow", "escalate", "message", "end"]
+                },
+                "entity": {
+                  "type": "string",
+                  "description": "For 'collect' steps: entity name to collect."
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "What the agent says."
+                },
+                "integration": {
+                  "type": "string",
+                  "description": "For 'call-integration': integration name."
+                },
+                "operation": {
+                  "type": "string",
+                  "description": "For 'call-integration': operation name within the integration."
+                },
+                "condition": {
+                  "type": "string",
+                  "description": "For 'branch': expression to evaluate. References entity names."
+                },
+                "then": {
+                  "type": "string",
+                  "description": "For 'branch': step ID or flow ID to jump to when condition is true."
+                },
+                "else": {
+                  "type": "string",
+                  "description": "For 'branch': step ID or flow ID to jump to when condition is false."
+                },
+                "flow": {
+                  "type": "string",
+                  "description": "For 'handoff-flow': target flow ID."
+                },
+                "queue": {
+                  "type": "string",
+                  "description": "For 'escalate': human queue name."
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": ["low", "normal", "high", "urgent"]
+                },
+                "handoff_entities": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Entities to pass to human agent on escalation."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "For 'message' and 'end': text to display."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "fallback": {
+      "type": "object",
+      "required": ["unrecognized_input", "max_retries", "final_action"],
+      "additionalProperties": false,
+      "properties": {
+        "unrecognized_input": {
+          "type": "string",
+          "enum": ["repeat-prompt", "rephrase-prompt", "offer-menu"],
+          "description": "What to do when input doesn't match expected entity or intent."
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "final_action": {
+          "type": "string",
+          "enum": ["escalate", "end-session", "restart-flow"],
+          "description": "What to do after max_retries is exhausted."
+        },
+        "escalation_queue": {
+          "type": "string",
+          "description": "Required when final_action is 'escalate'."
+        }
+      }
+    },
+
+    "overrides": {
+      "type": "object",
+      "description": "Platform-specific configuration that doesn't fit the capability model. These are additive — they don't change the canonical spec.",
+      "additionalProperties": false,
+      "properties": {
+        "sierra": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "agent_name": { "type": "string" },
+            "flow_name_prefix": { "type": "string" },
+            "voice_channel": { "type": "boolean" },
+            "digital_channel": { "type": "boolean" }
+          }
+        },
+        "google-agent-studio": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "entry_agent_display_name": { "type": "string" },
+            "location": { "type": "string" },
+            "time_zone": { "type": "string" },
+            "default_language_code": { "type": "string" }
+          }
+        },
+        "cognigy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "flow_id": { "type": "string" },
+            "nlu_connector": {
+              "type": "string",
+              "enum": ["cognigy-nlu", "dialogflow", "luis", "lex"]
+            },
+            "voice_channel": { "type": "boolean" }
+          }
+        },
+
+        "langchain": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "LangChain agent configuration. Generates a Python file with tools + AgentExecutor.",
+          "properties": {
+            "model": {
+              "type": "string",
+              "description": "LLM model ID.",
+              "examples": ["claude-3-5-sonnet-20241022", "gpt-4o", "gemini-1.5-pro"]
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["anthropic", "openai", "google", "bedrock"],
+              "description": "LLM provider. Determines which LangChain integration package is used."
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Model temperature. 0 for deterministic behaviour in production agents."
+            },
+            "max_iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10,
+              "description": "Maximum tool-calling iterations before the agent gives up."
+            },
+            "memory_window": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 10,
+              "description": "Number of prior conversation turns to include in context. 0 = stateless."
+            }
+          }
+        },
+
+        "crewai": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "CrewAI configuration. Generates a Python file with Agents, Tasks, and a Crew.",
+          "properties": {
+            "model": {
+              "type": "string",
+              "description": "LLM model ID for all agents in the crew.",
+              "examples": ["claude-3-5-sonnet-20241022", "gpt-4o"]
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["anthropic", "openai", "google", "bedrock"]
+            },
+            "process": {
+              "type": "string",
+              "enum": ["sequential", "hierarchical"],
+              "default": "sequential",
+              "description": "sequential: tasks run in order. hierarchical: a manager agent delegates."
+            },
+            "verbose": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, agents log their reasoning to stdout."
+            },
+            "memory": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, agents share a memory store across tasks."
+            }
+          }
+        }
+      }
+    }
+  }
+}
