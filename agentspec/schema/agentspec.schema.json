@@ -329,6 +329,76 @@
             },
             "voice_channel": { "type": "boolean" }
           }
+        },
+
+        "langchain": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "LangChain agent configuration. Generates a Python file with tools + AgentExecutor.",
+          "properties": {
+            "model": {
+              "type": "string",
+              "description": "LLM model ID.",
+              "examples": ["claude-3-5-sonnet-20241022", "gpt-4o", "gemini-1.5-pro"]
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["anthropic", "openai", "google", "bedrock"],
+              "description": "LLM provider. Determines which LangChain integration package is used."
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0,
+              "description": "Model temperature. 0 for deterministic behaviour in production agents."
+            },
+            "max_iterations": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10,
+              "description": "Maximum tool-calling iterations before the agent gives up."
+            },
+            "memory_window": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 10,
+              "description": "Number of prior conversation turns to include in context. 0 = stateless."
+            }
+          }
+        },
+
+        "crewai": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "CrewAI configuration. Generates a Python file with Agents, Tasks, and a Crew.",
+          "properties": {
+            "model": {
+              "type": "string",
+              "description": "LLM model ID for all agents in the crew.",
+              "examples": ["claude-3-5-sonnet-20241022", "gpt-4o"]
+            },
+            "provider": {
+              "type": "string",
+              "enum": ["anthropic", "openai", "google", "bedrock"]
+            },
+            "process": {
+              "type": "string",
+              "enum": ["sequential", "hierarchical"],
+              "default": "sequential",
+              "description": "sequential: tasks run in order. hierarchical: a manager agent delegates."
+            },
+            "verbose": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, agents log their reasoning to stdout."
+            },
+            "memory": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, agents share a memory store across tasks."
+            }
+          }
         }
       }
     }

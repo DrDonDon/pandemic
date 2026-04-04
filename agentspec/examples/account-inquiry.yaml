@@ -216,3 +216,17 @@ overrides:
     flow_id: "account_inquiry_v1"
     nlu_connector: "cognigy-nlu"
     voice_channel: false
+
+  langchain:
+    model: "claude-3-5-sonnet-20241022"
+    provider: anthropic
+    temperature: 0
+    max_iterations: 10
+    memory_window: 10
+
+  crewai:
+    model: "claude-3-5-sonnet-20241022"
+    provider: anthropic
+    process: sequential
+    verbose: false
+    memory: false

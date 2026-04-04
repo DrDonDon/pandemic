@@ -405,3 +405,17 @@ overrides:
     flow_id: "billing_dispute_v1"
     nlu_connector: "cognigy-nlu"
     voice_channel: true
+
+  langchain:
+    model: "claude-3-5-sonnet-20241022"
+    provider: anthropic
+    temperature: 0
+    max_iterations: 15
+    memory_window: 10
+
+  crewai:
+    model: "claude-3-5-sonnet-20241022"
+    provider: anthropic
+    process: sequential
+    verbose: false
+    memory: false
