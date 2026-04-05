@@ -18,19 +18,24 @@ weeks_on_current_thread: 0
 open_conjectures:
   - id: C1
     statement: >
-      Let alpha, beta: R -> (0,2) x (0,1) be measurable and bounded away from 0 and 2
-      (resp. 0 and 1). The rescaled CTRW X^epsilon converges weakly in D([0,T], R)
-      if and only if alpha and beta are continuous.
+      REVISED (2026-04-05): Let alpha, beta: R -> (0,2) x (0,1) be measurable and bounded
+      away from 0 and their maxima. The rescaled CTRW X^epsilon converges weakly in D([0,T],R)
+      to a process whose density satisfies the variable-order fractional diffusion equation
+      d_t^{beta(x)} u = -(-Delta)^{alpha(x)/2} u  if and only if alpha and beta are continuous.
+      [Original "iff weak convergence" is likely wrong — step-function CTRW probably does
+      converge weakly under alpha_1-scaling, but to a scale mixture, not the variable-order PDE.]
     precision: formalised
     trivial_cases_checked: true
-    stepping_stone: "S1: show step-function alpha causes non-convergence (necessity direction)"
+    stepping_stone: "S1: show step-function alpha gives limit that is a scale mixture of alpha_1-stables, not a variable-order PDE solution"
     evidence_for:
       - "Constant-exponent case: Meerschaert-Scheffler (2004) — converges. Baseline."
       - "Linear alpha(x): local parameter variation O(eps^{1/alpha}) -> 0 in scaling limit"
       - "Umarov-Steinberg (2009): piecewise-constant order causes interface issues on PDE side"
-      - "Numerical (2026-04-05): step-function alpha1=1.2/alpha2=1.8 produces asymmetric tails (1.366 left, 1.076 right) — no symmetric stable law fits. CF exponent varies with k (not constant). See simulations/C1-S1-notes.md."
-    evidence_against: []
-    next_step: "Harden S1 into rigorous proof via CF argument. Read Straka (2018) in full for beta(x) regularity conditions."
+      - "Numerical (2026-04-05): step-function alpha1=1.2/alpha2=1.8 produces asymmetric tails — consistent with scale mixture of alpha_1-stables, not pure stable law"
+      - "Derive (2026-04-05): alpha_2 contribution vanishes under n^{1/alpha_1} scaling (Lemma 1, proved). Scale mixture structure established modulo occupation time gap (G1-G2)."
+    evidence_against:
+      - "Step-function CTRW likely DOES converge weakly (under alpha_1-scaling) — falsifies original 'iff weak convergence' formulation. Revised to 'iff PDE characterisation holds'."
+    next_step: "Close gap G1-G2: occupation time law for asymmetric-exponent stable walk. Search for Bingham (1973) arc-sine law extension. Then proof is complete."
     weeks_active: 0
 
 proved: []
