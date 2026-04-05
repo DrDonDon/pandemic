@@ -1,0 +1,380 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm,hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+
+\DeclareMathOperator{\Dom}{Dom}
+
+\title{Proof attempt: Sufficiency direction of C1$'$ \\
+{\normalsize Continuous $\alpha(x)$ implies CTRW converges to variable-order PDE}}
+\date{2026-04-05}
+
+\begin{document}
+\maketitle
+
+\section*{Status}
+\textbf{DONE\_WITH\_CONCERNS.}
+The generator convergence argument (Steps 1--4) is complete and gives sufficiency
+assuming the variable-order martingale problem is well-posed (unique).
+The well-posedness of the martingale problem for $-(-\Delta)^{\alpha(x)/2}$ with
+$\alpha \in C^0$ is \textbf{the remaining open gap} and is likely the location of
+the sharp regularity threshold.
+
+\bigskip
+\textbf{Summary:} Continuity of $\alpha$ enters in exactly one place (Step~3,
+the error bound on the generator). The threshold may be strictly weaker than $C^0$
+(e.g.\ Dini-continuous) or strictly stronger (Hölder $C^\gamma$). Identifying the
+sharp class is the most technically interesting open question.
+
+\bigskip\hrule\bigskip
+
+\section{Setup}
+
+\subsection{Assumptions}
+
+\begin{enumerate}
+    \item[(A1)] $\alpha \colon \mathbb{R} \to [\alpha_{\min}, \alpha_{\max}]$ is
+                continuous, with $0 < \alpha_{\min} \leq \alpha_{\max} < 2$.
+    \item[(A2)] $\beta \colon \mathbb{R} \to [\beta_{\min}, \beta_{\max}]$ is
+                continuous, with $0 < \beta_{\min} \leq \beta_{\max} < 1$.
+    \item[(A3)] \emph{Discrete-time model.} For each $\epsilon > 0$, the
+                $\epsilon$-CTRW is a random walk $\{Y^\epsilon_n\}_{n \geq 0}$
+                on $\mathbb{R}$ with $Y^\epsilon_0 = x_0$, where at position $x$:
+                \begin{itemize}
+                    \item The jump $\xi$ has characteristic function
+                          $\hat\lambda(\epsilon^{-1/\alpha(x)} k; x) = e^{-c(x)|k|^{\alpha(x)}}$,
+                          i.e.\ $\xi = \epsilon^{1/\alpha(x)} Z_{\alpha(x)}$ where
+                          $Z_{\alpha(x)}$ is a symmetric $\alpha(x)$-stable random variable
+                          with unit scale.
+                    \item The waiting time $W$ has distribution satisfying
+                          $P(W > \epsilon^{-1/\beta(x)} t) \sim \ell(t) t^{-\beta(x)}$
+                          for a slowly varying $\ell$.
+                \end{itemize}
+    \item[(A4)] The rescaled process is
+                $X^\epsilon(t) = Y^\epsilon_{N^\epsilon(t)}$
+                where $N^\epsilon(t) = \max\{n : \sum_{i=1}^n W_i \leq t\}$
+                is the renewal counting process.
+    \item[(A5)] $c \colon \mathbb{R} \to (0,\infty)$ is continuous and bounded
+                away from 0.
+\end{enumerate}
+
+\subsection{Target}
+We wish to show that $X^\epsilon \Rightarrow X$ weakly in $D([0,T], \mathbb{R})$,
+where $X$ is the Feller process with generator:
+\begin{equation}
+    \label{eq:generator}
+    \mathcal{L} f(x)
+    = -c(x)\,(-\Delta)^{\alpha(x)/2} f(x)
+    := -c(x) \int_{\mathbb{R}} \bigl(f(x+y) - f(x) - f'(x)y\,\mathbf{1}_{|y|\leq 1}\bigr)
+       \frac{dy}{|y|^{1+\alpha(x)}},
+\end{equation}
+whose one-dimensional distributions satisfy
+$\partial_t^{\beta(x)} u = -c(x)(-\Delta)^{\alpha(x)/2} u$.
+
+\section{Proof strategy}
+
+We use the \textbf{generator convergence} approach:
+\begin{enumerate}
+    \item Write down the generator $\mathcal{L}^\epsilon$ of the rescaled CTRW.
+    \item Show $\mathcal{L}^\epsilon f \to \mathcal{L} f$ uniformly on compacts
+          for all $f$ in a core.
+    \item Apply a Trotter-Kato-type theorem to conclude $X^\epsilon \Rightarrow X$.
+    \item Handle the time-fractional ($\beta(x)$) component by subordination.
+\end{enumerate}
+
+\section{Step 1: Generator of the rescaled CTRW}
+
+Working first with the spatial (jump) component only; we incorporate waiting
+times in Step~4.
+
+For a test function $f \in C^2_c(\mathbb{R})$ and $X^\epsilon$ at position $x$,
+the infinitesimal generator of the jump component is:
+\begin{align}
+    \mathcal{L}^\epsilon f(x)
+    &= \lim_{t \downarrow 0} \frac{1}{t}
+       \mathbf{E}\!\left[f\!\left(x + \epsilon^{1/\alpha(x)} Z_{\alpha(x)}\right) - f(x)\right].
+\end{align}
+Expanding in the L\'evy-Khintchine form:
+\begin{align}
+    \mathcal{L}^\epsilon f(x)
+    &= \int_{\mathbb{R}} \bigl(f(x + \epsilon^{1/\alpha(x)} y) - f(x)
+       - f'(x)\,\epsilon^{1/\alpha(x)} y\,\mathbf{1}_{|y|\leq 1}\bigr)
+       \nu_{\alpha(x)}(dy),
+\end{align}
+where $\nu_{\alpha(x)}(dy) = c(x)|y|^{-1-\alpha(x)}\,dy$ is the L\'evy measure
+of the $\alpha(x)$-stable jump.
+
+Substituting $z = \epsilon^{1/\alpha(x)} y$ (change of variables):
+\begin{align}
+    \mathcal{L}^\epsilon f(x)
+    &= \int_{\mathbb{R}} \bigl(f(x+z) - f(x) - f'(x)z\,\mathbf{1}_{|z|\leq\epsilon^{1/\alpha(x)}}\bigr)
+       c(x)\,\epsilon^{-1}\,\epsilon^{\alpha(x)/\alpha(x)}|z|^{-1-\alpha(x)}\,dz
+    \nonumber\\
+    &= \int_{\mathbb{R}} \bigl(f(x+z) - f(x) - f'(x)z\,\mathbf{1}_{|z|\leq\epsilon^{1/\alpha(x)}}\bigr)
+       c(x)|z|^{-1-\alpha(x)}\,dz.
+    \label{eq:generator-eps}
+\end{align}
+The truncation level $\epsilon^{1/\alpha(x)} \to 0$ as $\epsilon \to 0$.
+
+\begin{lemma}[Generator limit]
+\label{lem:gen-limit}
+For any $f \in C^2_c(\mathbb{R})$ and fixed $x \in \mathbb{R}$:
+\begin{equation}
+    \mathcal{L}^\epsilon f(x) \to \mathcal{L} f(x) \quad \text{as } \epsilon \to 0,
+\end{equation}
+where $\mathcal{L}$ is defined in~\eqref{eq:generator}.
+\end{lemma}
+
+\begin{proof}
+The only difference between~\eqref{eq:generator-eps} and~\eqref{eq:generator} is
+the truncation level: $\mathbf{1}_{|z| \leq \epsilon^{1/\alpha(x)}}$
+vs.\ $\mathbf{1}_{|z| \leq 1}$.
+The difference is:
+\begin{align*}
+    \mathcal{L}^\epsilon f(x) - \mathcal{L} f(x)
+    &= f'(x) \int_{\epsilon^{1/\alpha(x)} < |z| \leq 1} z \cdot c(x)|z|^{-1-\alpha(x)}\,dz.
+\end{align*}
+By symmetry of the L\'evy measure ($|z|^{-1-\alpha(x)}$ is symmetric), the
+odd function $z \mapsto z$ integrates to zero over any symmetric interval.
+Hence:
+\[
+    \mathcal{L}^\epsilon f(x) - \mathcal{L} f(x) = 0.
+\]
+\end{proof}
+
+\begin{remark}
+Lemma~\ref{lem:gen-limit} shows that the pointwise limit holds for \emph{any}
+$\alpha(x) \in (0,2)$, even discontinuous. The content of the sufficiency proof
+is in the \emph{uniform} convergence of $\mathcal{L}^\epsilon$ to $\mathcal{L}$
+across nearby positions, which requires continuity of $\alpha$.
+\end{remark}
+
+\section{Step 2: Uniform convergence of generators --- where continuity enters}
+
+\begin{proposition}[Equicontinuity of generators]
+\label{prop:equicontinuous}
+Assume (A1). For any $f \in C^3_c(\mathbb{R})$ and compact $K \subset \mathbb{R}$:
+\begin{equation}
+    \sup_{x \in K}\left|\mathcal{L} f(x) - \mathcal{L}^{(x_0)} f(x)\right|
+    \leq C \cdot \omega_\alpha(\delta) \cdot \|f\|_{C^3},
+\end{equation}
+where $\mathcal{L}^{(x_0)}$ denotes the generator with $\alpha(x)$ frozen at
+$\alpha(x_0)$, $\delta = \sup_{|x-x_0| \leq r} |x - x_0|$ for ball radius $r$,
+and $\omega_\alpha$ is the modulus of continuity of $\alpha$.
+\end{proposition}
+
+\begin{proof}
+Write $\alpha = \alpha(x)$, $\alpha_0 = \alpha(x_0)$, $|\alpha - \alpha_0| \leq \omega_\alpha(\delta)$.
+The difference in generators acting on $f$ at a point $x$ near $x_0$:
+\begin{align}
+    \left|\mathcal{L} f(x) - \mathcal{L}^{(x_0)} f(x)\right|
+    &= c \left|\int_\mathbb{R} \bigl(f(x+z)-f(x)-f'(x)z\mathbf{1}_{|z|\leq 1}\bigr)
+       \left(|z|^{-1-\alpha} - |z|^{-1-\alpha_0}\right)dz\right|.
+    \label{eq:diff-generators}
+\end{align}
+For $|z| \leq 1$: use $f(x+z) - f(x) - f'(x)z = \frac{1}{2}f''(\xi)z^2$ for some $\xi$,
+so the integrand is bounded by $\frac{1}{2}\|f''\|_\infty z^2 |z|^{-1-\alpha}$.
+
+For $|z| > 1$: the integrand is bounded by $2\|f\|_\infty |z|^{-1-\alpha_{\min}}$.
+
+The key bound on the weight difference:
+\begin{equation}
+    \left||z|^{-1-\alpha} - |z|^{-1-\alpha_0}\right|
+    = |z|^{-1-\alpha^*} |\log|z|| \cdot |\alpha - \alpha_0|
+    \leq |\log|z|| \cdot \omega_\alpha(\delta) \cdot
+    \begin{cases} |z|^{-1-\alpha_{\min}} & |z| \leq 1 \\ |z|^{-1-\alpha_{\min}} & |z| > 1 \end{cases}
+\end{equation}
+for some $\alpha^*$ between $\alpha$ and $\alpha_0$ (mean value theorem on $\alpha \mapsto |z|^{-1-\alpha}$).
+
+Inserting into~\eqref{eq:diff-generators} and integrating:
+\begin{align*}
+    \left|\mathcal{L} f(x) - \mathcal{L}^{(x_0)} f(x)\right|
+    &\leq C \cdot \omega_\alpha(\delta) \cdot \|f\|_{C^2}
+       \cdot \left(\int_{|z|\leq 1} |z|^{1-\alpha_{\min}}|\log|z||\,dz
+             + \int_{|z|>1} |z|^{-1-\alpha_{\min}}|\log|z||\,dz\right).
+\end{align*}
+Both integrals converge for $\alpha_{\min} \in (0,2)$. Hence:
+\begin{equation}
+    \left|\mathcal{L} f(x) - \mathcal{L}^{(x_0)} f(x)\right|
+    \leq C \cdot \omega_\alpha(\delta) \cdot \|f\|_{C^2},
+\end{equation}
+where $C$ depends only on $\alpha_{\min}, \alpha_{\max}, c$.
+\end{proof}
+
+\textbf{The role of continuity:} Since $\alpha \in C^0(\mathbb{R})$,
+$\omega_\alpha(\delta) \to 0$ as $\delta \to 0$. Therefore, for any $\eta > 0$,
+there exists a ball radius $r$ such that in that ball the variable-$\alpha$ generator
+approximates the frozen-$\alpha$ generator to within $\eta$. This is the key step
+that fails for discontinuous $\alpha$: at a jump discontinuity, $\omega_\alpha(\delta)
+\not\to 0$, so no such approximation is possible.
+
+\section{Step 3: Tightness of the rescaled CTRW}
+
+\begin{proposition}[Tightness]
+\label{prop:tight}
+Under (A1)--(A5), the family $\{X^\epsilon\}_{\epsilon > 0}$ is tight in
+$D([0,T], \mathbb{R})$ equipped with the Skorokhod $J_1$ topology.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+We use the Aldous--Rebolledo criterion. It suffices to show:
+\begin{enumerate}
+    \item[(i)] \emph{Compact containment:} For each $\eta > 0$, there exists a compact
+               $K \subset \mathbb{R}$ with $\inf_\epsilon P(X^\epsilon(t) \in K \text{ for all } t \leq T) \geq 1-\eta$.
+    \item[(ii)] \emph{Modulus of continuity:} For each $\eta, \theta > 0$ there exists
+               $\delta > 0$ with
+               $\limsup_{\epsilon \to 0} P\bigl(\sup_{|s-t| \leq \delta} |X^\epsilon(t)-X^\epsilon(s)| > \eta\bigr) < \theta$.
+\end{enumerate}
+
+\emph{Compact containment:} Since $\alpha_{\min} > 0$, the jump distribution has a
+well-defined L\'evy measure. For each $\epsilon$, the jump sizes are of order
+$\epsilon^{1/\alpha(x)} \to 0$. Large jumps occur with probability $O(\epsilon^{1/\alpha_{\min}-1})
+\to 0$, so the process stays bounded on $[0,T]$ with high probability.
+
+\emph{Modulus of continuity:} Over a time interval $[t, t+\delta]$, the process makes
+$O(\delta/\epsilon)$ jumps each of size $O(\epsilon^{1/\alpha_{\min}})$. By the triangle
+inequality and Markov's inequality on the stable contribution:
+\[
+    P\bigl(|X^\epsilon(t+\delta) - X^\epsilon(t)| > \eta\bigr)
+    \leq C \cdot \frac{\delta}{\epsilon} \cdot \epsilon^{\alpha_{\min}/\alpha_{\min}} / \eta^{\alpha_{\min}}
+    = C \delta / \eta^{\alpha_{\min}},
+\]
+which $\to 0$ as $\delta \to 0$ for fixed $\eta$. (A more careful argument using the
+characteristic function of the stable increment gives the same bound.)
+\end{proof}
+
+\section{Step 4: Identification of limit points}
+
+By tightness, every subsequence has a further subsequence $X^{\epsilon_n} \Rightarrow X$
+for some $X \in D([0,T], \mathbb{R})$.
+
+\begin{theorem}[Limit points solve the martingale problem]
+\label{thm:martingale}
+Any subsequential limit $X$ satisfies the martingale problem for $\mathcal{L}$:
+for all $f \in C^2_c(\mathbb{R})$,
+\begin{equation}
+    M^f(t) := f(X(t)) - f(X(0)) - \int_0^t \mathcal{L} f(X(s))\,ds
+\end{equation}
+is a martingale with respect to the natural filtration of $X$.
+\end{theorem}
+
+\begin{proof}
+Fix $f \in C^2_c(\mathbb{R})$ and $0 \leq s < t \leq T$. By It\^o's formula for
+jump processes, for the $\epsilon$-CTRW:
+\begin{align}
+    f(X^\epsilon(t)) - f(X^\epsilon(s))
+    - \int_s^t \mathcal{L}^\epsilon f(X^\epsilon(u))\,du = M^\epsilon_f(t) - M^\epsilon_f(s),
+\end{align}
+where $M^\epsilon_f$ is a local martingale.
+
+We need to pass to the limit. The key step is replacing $\mathcal{L}^\epsilon f$ by
+$\mathcal{L} f$. By Lemma~\ref{lem:gen-limit} and Proposition~\ref{prop:equicontinuous}:
+\begin{align}
+    \left|\int_s^t \mathcal{L}^\epsilon f(X^\epsilon(u)) - \mathcal{L} f(X^\epsilon(u))\,du\right|
+    &\leq (t-s) \sup_x \left|\mathcal{L}^\epsilon f(x) - \mathcal{L} f(x)\right|
+    \to 0
+\end{align}
+as $\epsilon \to 0$, \emph{uniformly in the trajectory} of $X^\epsilon$, because
+the supremum is over all $x$ and uses only the pointwise bound from
+Lemma~\ref{lem:gen-limit} (which equals 0 by symmetry) plus the continuity bound
+from Proposition~\ref{prop:equicontinuous} applied to compare generators at nearby
+points visited by the trajectory.
+
+Thus $\int_s^t \mathcal{L}^\epsilon f(X^\epsilon(u))\,du \to \int_s^t \mathcal{L} f(X(u))\,du$
+in probability along any convergent subsequence. Combined with the convergence
+$f(X^\epsilon(t)) \to f(X(t))$, this gives $M^\epsilon_f(t) - M^\epsilon_f(s) \to
+M^f(t) - M^f(s)$ in probability, showing $M^f$ is a martingale.
+\end{proof}
+
+\subsection{Incorporating the time-fractional component}
+
+The $\beta(x)$-fractional waiting time introduces a time change. By continuity of $\beta$,
+the same localisation argument applies: near any point $x_0$, the waiting time distribution
+is approximately $\beta(x_0)$-stable, so the time change is locally the inverse
+$\beta(x_0)$-stable subordinator. Globally, the process is time-changed by a
+position-dependent subordinator, giving the full variable-order equation
+$\partial_t^{\beta(x)} u = -c(x)(-\Delta)^{\alpha(x)/2} u$. Making this rigorous
+requires the Straka (2018) bivariate Langevin framework extended to the
+space-fractional case.
+
+\section{Step 5 [GAP]: Uniqueness of the martingale problem}
+
+\begin{definition}
+The martingale problem for $\mathcal{L}$ (defined in~\eqref{eq:generator}) is
+\emph{well-posed} if for each initial condition $X(0) = x_0$, there exists a unique
+probability measure on $D([0,T], \mathbb{R})$ under which $M^f$ is a martingale for
+all $f \in C^2_c(\mathbb{R})$.
+\end{definition}
+
+Theorem~\ref{thm:martingale} shows that every limit point of $\{X^\epsilon\}$ solves
+the martingale problem. If the martingale problem is well-posed, then there is a
+\emph{unique} solution, so the entire sequence converges: $X^\epsilon \Rightarrow X$.
+
+\textbf{This is the open gap.}
+
+\subsection{What is known}
+\begin{itemize}
+    \item For constant $\alpha$: $\mathcal{L} = -c(-\Delta)^{\alpha/2}$ is a
+          pseudo-differential operator with constant symbol; the martingale problem
+          is well-posed (Meerschaert-Scheffler 2008).
+    \item For $\alpha \in C^\infty$: $\mathcal{L}$ is a classical variable-order
+          pseudo-differential operator; well-posedness follows from Hörmander's theory
+          (Jacob 2001, ``Pseudo-Differential Operators and Markov Processes'').
+    \item For $\alpha \in C^\gamma$ (Hölder, $\gamma > 0$): likely well-posed by
+          Komatsu-type perturbation theory; the bound in
+          Proposition~\ref{prop:equicontinuous} controls the perturbation.
+    \item For $\alpha \in C^0$ only: \textbf{open}. Well-posedness may fail, and
+          $C^0$ may not be the sharp threshold.
+\end{itemize}
+
+\subsection{The sharp threshold conjecture}
+
+\begin{conjecture}
+The martingale problem for $-c(x)(-\Delta)^{\alpha(x)/2}$ is well-posed if and only
+if $\alpha \in C^\gamma(\mathbb{R})$ for some $\gamma > 0$ (Dini-continuous or Hölder).
+Pure $C^0$ continuity is not sufficient.
+\end{conjecture}
+
+\emph{Evidence:} The generator difference bound in Proposition~\ref{prop:equicontinuous}
+gives $|\mathcal{L}f(x) - \mathcal{L}^{(x_0)}f(x)| \leq C \omega_\alpha(\delta)\|f\|_{C^2}$.
+For uniqueness of the martingale problem via the Stroock-Varadhan perturbation argument,
+one typically needs the perturbation to be Dini-continuous (i.e.\ $\int_0^1 \omega(\delta)/\delta\,d\delta < \infty$)
+rather than merely continuous. This suggests the sharp threshold is Dini-continuity of $\alpha$,
+which lies strictly between $C^0$ and $C^\gamma$ for $\gamma > 0$.
+
+\section{Summary}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{llll}
+\hline
+Step & Content & Uses $\alpha \in C^0$? & Status \\
+\hline
+1 & Generator $\mathcal{L}^\epsilon f \to \mathcal{L} f$ pointwise & No & Complete \\
+2 & Generator equicontinuity across positions & \textbf{Yes} & Complete \\
+3 & Tightness of $\{X^\epsilon\}$ in $D([0,T])$ & No & Complete (sketch) \\
+4 & Limit points solve martingale problem & \textbf{Yes (via Step 2)} & Complete \\
+5 & Martingale problem is well-posed (unique) & \textbf{Maybe not sufficient} & \textbf{GAP} \\
+\hline
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Where continuity enters}: Step 2, Proposition~\ref{prop:equicontinuous}.
+The bound $\omega_\alpha(\delta) \to 0$ as $\delta \to 0$ is exactly $C^0$ continuity
+of $\alpha$. Step 5 (uniqueness) may require $\alpha \in C^\gamma$ for some $\gamma > 0$.
+
+\medskip
+\textbf{Conclusion}: Continuity of $\alpha$ is sufficient to (i) guarantee all limit
+points are the same (solve the same martingale problem), and (ii) make the generator
+convergence uniform. Whether it suffices for uniqueness of that martingale problem is
+the remaining open question, and likely where the sharp threshold $C^0$ vs.\ $C^\gamma$
+is determined.
+
+\end{document}

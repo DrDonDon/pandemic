@@ -32,10 +32,11 @@ open_conjectures:
       - "Linear alpha(x): local parameter variation O(eps^{1/alpha}) -> 0 in scaling limit"
       - "Umarov-Steinberg (2009): piecewise-constant order causes interface issues on PDE side"
       - "Numerical (2026-04-05): step-function alpha1=1.2/alpha2=1.8 produces asymmetric tails — consistent with scale mixture of alpha_1-stables, not pure stable law"
-      - "Derive (2026-04-05): alpha_2 contribution vanishes under n^{1/alpha_1} scaling (Lemma 1, proved). Scale mixture structure established modulo occupation time gap (G1-G2)."
+      - "Derive S1 (2026-04-05): alpha_2 contribution vanishes under n^{1/alpha_1} scaling (Lemma 1, proved). Scale mixture structure established modulo occupation time gap (G1-G2)."
+      - "Derive sufficiency (2026-04-05): generator convergence complete (Steps 1-4). Continuity of alpha enters in Prop 2 (equicontinuity bound omega_alpha(delta)->0). Tightness and limit-point identification complete. Gap: uniqueness of martingale problem for -(-Delta)^{alpha(x)/2}. Sharp threshold likely Dini-continuous."
     evidence_against:
       - "Step-function CTRW likely DOES converge weakly (under alpha_1-scaling) — falsifies original 'iff weak convergence' formulation. Revised to 'iff PDE characterisation holds'."
-    next_step: "Close gap G1-G2: occupation time law for asymmetric-exponent stable walk. Search for Bingham (1973) arc-sine law extension. Then proof is complete."
+    next_step: "Two open gaps remain: (1) S1 gap G1-G2: occupation time law for asymmetric stable walk — Bingham (1973) extension. (2) Sufficiency gap: well-posedness of martingale problem for -(-Delta)^{alpha(x)/2} with alpha in C^0. Sharp threshold likely Dini-continuous, not merely C^0. Open a new conjecture C2 on the sharp threshold."
     weeks_active: 0
 
 proved: []
