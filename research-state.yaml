@@ -28,8 +28,9 @@ open_conjectures:
       - "Constant-exponent case: Meerschaert-Scheffler (2004) — converges. Baseline."
       - "Linear alpha(x): local parameter variation O(eps^{1/alpha}) -> 0 in scaling limit"
       - "Umarov-Steinberg (2009): piecewise-constant order causes interface issues on PDE side"
+      - "Numerical (2026-04-05): step-function alpha1=1.2/alpha2=1.8 produces asymmetric tails (1.366 left, 1.076 right) — no symmetric stable law fits. CF exponent varies with k (not constant). See simulations/C1-S1-notes.md."
     evidence_against: []
-    next_step: "Run /counterexample on S1 (step-function alpha). Read Straka (2018) in full to confirm exact regularity assumed on beta(x)."
+    next_step: "Harden S1 into rigorous proof via CF argument. Read Straka (2018) in full for beta(x) regularity conditions."
     weeks_active: 0
 
 proved: []
