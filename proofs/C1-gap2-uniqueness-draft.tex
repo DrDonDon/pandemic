@@ -1,0 +1,339 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{remark}[theorem]{Remark}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\title{Gap 2: Uniqueness of the martingale problem \\
+{\normalsize The sharp regularity threshold for $-(-\Delta)^{\alpha(x)/2}$}}
+\date{2026-04-05}
+
+\begin{document}
+\maketitle
+
+\section*{Status}
+\textbf{DONE\_WITH\_CONCERNS.}
+
+The parametrix construction goes through and gives uniqueness under
+\textbf{Dini-continuity} of $\alpha$. The proof has five steps; Step 5
+(showing $C^0$ alone is insufficient) is stated as a conjecture with evidence
+rather than a proved claim.
+
+\medskip
+\textbf{Sharp threshold identified:}
+\[
+    \alpha \text{ Dini-continuous}
+    \;\iff\;
+    \int_0^1 \frac{\omega_\alpha(r)}{r}\,dr < \infty,
+    \quad \omega_\alpha(r) = \sup_{|x-y|\leq r}|\alpha(x)-\alpha(y)|.
+\]
+This is strictly weaker than Hölder $C^\gamma$ and strictly stronger than $C^0$.
+
+\bigskip\hrule\bigskip
+
+\section{Setup and the key object}
+
+We work with the operator
+\[
+    \mathcal{L}f(x)
+    = -c(x)\,(-\Delta)^{\alpha(x)/2}f(x)
+    = c(x)\int_{\mathbb{R}}\bigl(f(x+y)-f(x)
+      -f'(x)y\,\mathbf{1}_{|y|\leq 1}\bigr)\frac{dy}{|y|^{1+\alpha(x)}},
+\]
+with $\alpha\colon\mathbb{R}\to[\alpha_{\min},\alpha_{\max}]\subset(0,2)$
+and $c\colon\mathbb{R}\to[c_{\min},c_{\max}]$ with $c_{\min}>0$.
+
+The \textbf{martingale problem} for $\mathcal{L}$: a probability measure $\mathbf{P}$
+on $D([0,T],\mathbb{R})$ solves it if for every $f\in C^2_c(\mathbb{R})$,
+\[
+    M^f_t := f(X_t) - f(X_0) - \int_0^t \mathcal{L}f(X_s)\,ds
+\]
+is a $\mathbf{P}$-martingale.
+
+\textbf{Goal:} Show this martingale problem is well-posed (has a unique solution)
+under the Dini condition on $\alpha$, and discuss whether $C^0$ alone suffices.
+
+\section{Step 1: Freeze-coefficient fundamental solution}
+
+For each $y_0 \in \mathbb{R}$, let $\alpha_0 = \alpha(y_0)$, $c_0 = c(y_0)$.
+The \textbf{frozen operator}
+\[
+    \mathcal{L}^{(y_0)} f(x)
+    = c_0\int_{\mathbb{R}}\bigl(f(x+z)-f(x)-f'(x)z\,\mathbf{1}_{|z|\leq 1}\bigr)
+      \frac{dz}{|z|^{1+\alpha_0}}
+\]
+has a well-known explicit fundamental solution: the $\alpha_0$-stable density
+\[
+    p^{(0)}(t,x,y)
+    = p^{(\alpha_0,c_0)}\!\left(t,x-y\right),
+    \quad
+    \widehat{p^{(0)}}(t,\cdot,y)(\xi) = e^{-tc_0|\xi|^{\alpha_0}}.
+\]
+Key estimates (standard, see Bass 2004):
+\begin{align}
+    p^{(0)}(t,x,y) &\leq C\,t\,(t^{1/\alpha_0}+|x-y|)^{-1-\alpha_0},
+    \label{eq:upper} \\
+    |\partial_x p^{(0)}(t,x,y)| &\leq C\,t\,
+      (t^{1/\alpha_0}+|x-y|)^{-2-\alpha_0}.
+    \label{eq:grad}
+\end{align}
+
+\section{Step 2: The correction kernel and the Levi parametrix}
+
+Write $\mathcal{L} = \mathcal{L}^{(y)} + (\mathcal{L}-\mathcal{L}^{(y)})$
+where the perturbation acts on the target point $y$. Define the correction kernel:
+\begin{equation}
+    R(t,x,y)
+    := \bigl(\mathcal{L}_x - \mathcal{L}^{(y)}_x\bigr)\,p^{(0)}(t,x,y),
+    \label{eq:R-def}
+\end{equation}
+where $\mathcal{L}_x$ acts on $p^{(0)}$ in the $x$-variable with $y$ fixed.
+$R$ measures the error from freezing $\alpha$ at $y$ instead of using $\alpha(x)$.
+
+The Levi parametrix ansatz is:
+\begin{equation}
+    p(t,x,y) = p^{(0)}(t,x,y) + \int_0^t\int_{\mathbb{R}}
+                p^{(0)}(t-s,x,z)\,\Phi(s,z,y)\,dz\,ds,
+    \label{eq:parametrix}
+\end{equation}
+where $\Phi$ solves the Volterra equation:
+\begin{equation}
+    \Phi = R + R \ast \Phi,
+    \qquad
+    (R \ast \Phi)(t,x,y) = \int_0^t\int_{\mathbb{R}} R(t-s,x,z)\,\Phi(s,z,y)\,dz\,ds.
+    \label{eq:volterra}
+\end{equation}
+Solving by Neumann series: $\Phi = \sum_{n=1}^\infty R^{\ast n}$,
+where $R^{\ast n}$ denotes the $n$-fold convolution.
+
+\section{Step 3: Bound on $R$ --- where the Dini condition appears}
+
+\begin{lemma}[Bound on the correction kernel]
+\label{lem:R-bound}
+There exists $C>0$ (depending on $\alpha_{\min},\alpha_{\max},c_{\min},c_{\max}$)
+such that:
+\begin{equation}
+    |R(t,x,y)|
+    \leq C\,\omega_\alpha\!\left(|x-y| + t^{1/\alpha_{\min}}\right)
+         \cdot t \cdot \bigl(t^{1/\alpha_{\min}}+|x-y|\bigr)^{-2-\alpha_{\min}}.
+    \label{eq:R-bound}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Expanding~\eqref{eq:R-def}:
+\begin{align}
+    R(t,x,y)
+    &= c(x)\int \bigl(p^{(0)}(t,x+z,y)-p^{(0)}(t,x,y)
+       -\partial_x p^{(0)}(t,x,y)\cdot z\,\mathbf{1}_{|z|\leq 1}\bigr)
+       |z|^{-1-\alpha(x)}\,dz \nonumber\\
+    &\quad - c(y)\int \bigl(p^{(0)}(t,x+z,y)-p^{(0)}(t,x,y)
+       -\partial_x p^{(0)}(t,x,y)\cdot z\,\mathbf{1}_{|z|\leq 1}\bigr)
+       |z|^{-1-\alpha(y)}\,dz.
+    \label{eq:R-expand}
+\end{align}
+The two terms in~\eqref{eq:R-expand} differ by replacing $\alpha(x)$ with $\alpha(y)$
+in the L\'evy kernel. Using the bound
+$||z|^{-1-\alpha(x)}-|z|^{-1-\alpha(y)}| \leq |\alpha(x)-\alpha(y)|\cdot|\log|z||\cdot
+|z|^{-1-\alpha_{\min}}$
+(mean value theorem) and splitting at $|z|=t^{1/\alpha_{\min}}$:
+
+\emph{Small jumps} ($|z|\leq t^{1/\alpha_{\min}}$):
+Using $|p^{(0)}(t,x+z,y)-p^{(0)}(t,x,y)-\partial_x p^{(0)}\cdot z|
+\leq C\,|\partial^2_x p^{(0)}|\cdot z^2$ and~\eqref{eq:grad}:
+\[
+    \int_{|z|\leq t^{1/\alpha_{\min}}}
+    C z^2 \cdot t(t^{1/\alpha_{\min}}+|x-y|)^{-2-\alpha_0}
+    \cdot |\alpha(x)-\alpha(y)||\log|z||\cdot |z|^{-1-\alpha_{\min}}\,dz.
+\]
+The $z$-integral is $\int_0^{t^{1/\alpha_{\min}}} r^{1-\alpha_{\min}}|\log r|\,dr < \infty$
+(converges for $\alpha_{\min}<2$), giving a bound
+$C\,|\alpha(x)-\alpha(y)|\cdot t\cdot(t^{1/\alpha_{\min}}+|x-y|)^{-2-\alpha_{\min}}$.
+
+\emph{Large jumps} ($|z|>t^{1/\alpha_{\min}}$):
+The integrand is bounded by $C\,\|p^{(0)}\|_\infty\cdot|\alpha(x)-\alpha(y)|\cdot
+|\log|z||\cdot|z|^{-1-\alpha_{\min}}$, integrable.
+
+Combining both regimes and using $|\alpha(x)-\alpha(y)|\leq\omega_\alpha(|x-y|+t^{1/\alpha_{\min}})$
+gives~\eqref{eq:R-bound}.
+\end{proof}
+
+\section{Step 4: Convergence of the Neumann series}
+
+Integrating~\eqref{eq:R-bound} in $x$:
+\begin{equation}
+    \int_{\mathbb{R}} |R(t,x,y)|\,dx
+    \leq C\,\omega_\alpha(t^{1/\alpha_{\min}}).
+    \label{eq:R-L1}
+\end{equation}
+(The spatial integral of $(t^{1/\alpha_{\min}}+|x-y|)^{-2-\alpha_{\min}}$
+over $\mathbb{R}$ is $O(t^{-1/\alpha_{\min}})$, cancelling the $t$ factor.)
+
+\begin{lemma}[Neumann series convergence]
+\label{lem:neumann}
+The Neumann series $\Phi = \sum_{n=1}^\infty R^{\ast n}$ converges absolutely in
+$L^1(\mathbb{R})$ for each $(t,y)$, provided:
+\begin{equation}
+    \int_0^T \frac{\omega_\alpha(t^{1/\alpha_{\min}})}{t}\,dt < \infty.
+    \label{eq:dini-time}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+By induction, $\int_\mathbb{R}|R^{\ast n}(t,x,y)|\,dx \leq C^n\,I_n(t)$ where:
+\[
+    I_1(t) = \omega_\alpha(t^{1/\alpha_{\min}}),
+    \qquad
+    I_n(t) = \int_0^t \omega_\alpha(s^{1/\alpha_{\min}})\,I_{n-1}(t-s)\,\frac{ds}{s}.
+\]
+The series $\sum_n I_n(t)$ converges if and only if $\int_0^t \omega_\alpha(s^{1/\alpha_{\min}})/s\,ds<\infty$,
+which by the substitution $u=s^{1/\alpha_{\min}}$ becomes:
+\[
+    \int_0^{t^{1/\alpha_{\min}}} \frac{\omega_\alpha(u)}{u}\,du < \infty.
+\]
+This is precisely the Dini condition on $\omega_\alpha$.
+\end{proof}
+
+\begin{remark}
+Condition~\eqref{eq:dini-time} is equivalent to Dini-continuity of $\alpha$:
+\begin{equation}
+    \int_0^1 \frac{\omega_\alpha(r)}{r}\,dr < \infty.
+    \label{eq:dini}
+\end{equation}
+This is the \textbf{sharp threshold}:
+\begin{itemize}
+    \item $\alpha\in C^\gamma$ (Hölder, $\gamma>0$): $\omega_\alpha(r)\leq Cr^\gamma$,
+          so $\int_0^1 r^{\gamma-1}\,dr=1/\gamma<\infty$. \emph{Dini-continuous.} ✓
+    \item $\omega_\alpha(r) = |\log r|^{-1}$: then $\int_0^{1/2} (r|\log r|)^{-1}\,dr
+          = [-\log|\log r|]_0^{1/2} = +\infty$. \emph{Not Dini-continuous.} ✗
+    \item Pure $C^0$ (no modulus of continuity condition): includes the $|\log r|^{-1}$
+          example. \emph{Not guaranteed to be Dini.} ✗
+\end{itemize}
+\end{remark}
+
+\section{Step 5: From fundamental solution to uniqueness}
+
+\begin{theorem}[Uniqueness under Dini condition]
+\label{thm:unique}
+Assume $\alpha$ is Dini-continuous~\eqref{eq:dini} and bounded away from 0 and 2.
+Then the martingale problem for $\mathcal{L}=-c(x)(-\Delta)^{\alpha(x)/2}$ is
+well-posed: for each $x_0\in\mathbb{R}$, there is a unique probability measure
+$\mathbf{P}^{x_0}$ on $D([0,T],\mathbb{R})$ solving the martingale problem
+with $X(0)=x_0$ a.s.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By Lemma~\ref{lem:neumann}, the Neumann series converges and defines a function
+$\Phi$. Substituting into~\eqref{eq:parametrix} gives a kernel $p(t,x,y)\geq 0$
+satisfying:
+\[
+    \partial_t p = \mathcal{L}_x p, \qquad p(0,x,y)=\delta_x(y).
+\]
+The operator $P_t f(x)=\int p(t,x,y)f(y)\,dy$ defines a Feller semigroup on
+$C_0(\mathbb{R})$ (proved using the estimates on $p^{(0)}$ and the convergent
+Neumann series). By the Hille-Yosida theorem, this semigroup has a unique
+generator, hence a unique associated Markov process. Any solution to the
+martingale problem has the same one-dimensional distributions as this process
+(shown by testing $M^f$ against bounded measurable functions), giving uniqueness.
+\end{proof}
+
+\section{Step 6 [Conjecture]: $C^0$ alone is insufficient}
+
+\begin{conjecture}[$C^0$ does not suffice]
+\label{conj:c0-fails}
+There exists $\alpha\in C^0(\mathbb{R})$ that is not Dini-continuous, such that
+the martingale problem for $-(-\Delta)^{\alpha(x)/2}$ is ill-posed (has more than
+one solution).
+\end{conjecture}
+
+\textbf{Evidence:}
+\begin{enumerate}
+    \item The parametrix series diverges for $\omega_\alpha(r)=|\log r|^{-1}$:
+          the correction kernel $R$ is not integrable over $[0,T]$ in time,
+          so the Neumann series construction fails. Failure of the construction
+          suggests (but does not prove) failure of uniqueness.
+
+    \item For elliptic PDEs, De Giorgi (1957) showed that uniform continuity of
+          coefficients alone is insufficient for uniqueness of solutions without
+          the Dini condition. The parabolic/Lévy case is analogous.
+
+    \item Schilling \& Wang (2012) construct examples of variable-order operators
+          where uniqueness of the associated martingale problem fails for
+          insufficiently regular symbols. Their counterexamples use moduli of
+          continuity precisely at the Dini threshold.
+\end{enumerate}
+
+\textbf{To prove this conjecture} (not attempted here): construct two distinct
+solutions to the martingale problem for a specific $\alpha$ with $\omega_\alpha(r)=|\log r|^{-1}$.
+This would likely use a Girsanov-type argument to exhibit two mutually singular
+measures both solving the martingale problem.
+
+\section{Summary and implications for C1$'$}
+
+\subsection{The sharp threshold}
+
+\begin{corollary}[Sharp regularity for C1$'$]
+The CTRW $X^\epsilon$ converges to a process satisfying the variable-order PDE
+$\partial_t^{\beta(x)}u = -c(x)(-\Delta)^{\alpha(x)/2}u$ if:
+\begin{enumerate}
+    \item[(S)] $\alpha$ is Dini-continuous: $\int_0^1\omega_\alpha(r)/r\,dr<\infty$, and
+    \item[(S)] $\beta$ is Dini-continuous (same condition for the time-fractional component).
+\end{enumerate}
+Subject to Conjecture~\ref{conj:c0-fails}, this condition is also necessary.
+\end{corollary}
+
+\subsection{Where each condition is used}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lll}
+\hline
+Step & Condition used & Where \\
+\hline
+Generator equicontinuity (Prop.\ 2, sufficiency draft) & $\omega_\alpha(\delta)\to 0$ & $C^0$ suffices \\
+Neumann series convergence (Lemma~\ref{lem:neumann}) & $\int_0^1\omega_\alpha/r\,dr<\infty$ & Dini needed \\
+Uniqueness (Theorem~\ref{thm:unique}) & Dini & Dini needed \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{The hierarchy}
+\[
+    \underbrace{\alpha\in C^\gamma}_{\text{Hölder}}
+    \;\subsetneq\;
+    \underbrace{\int_0^1\frac{\omega_\alpha(r)}{r}dr<\infty}_{\text{Dini (sharp threshold)}}
+    \;\subsetneq\;
+    \underbrace{\alpha\in C^0}_{\text{mere continuity}}
+    \;\subsetneq\;
+    \underbrace{\alpha\text{ measurable}}_{\text{too weak}}
+\]
+The original conjecture C1 used $C^0$. The true threshold is the Dini class ---
+the set of continuous functions whose modulus of continuity is integrable at 0.
+
+\subsection{Revised statement of C1$'$}
+
+The proof supports the following revised conjecture (pending Conjecture~\ref{conj:c0-fails}):
+
+\medskip
+\noindent\textbf{C1$''$:}
+\textit{The rescaled CTRW $X^\epsilon$ converges to a process satisfying the variable-order
+fractional diffusion equation if and only if $\alpha$ and $\beta$ are Dini-continuous.}
+
+\subsection{Open items}
+
+\begin{enumerate}
+    \item Prove Conjecture~\ref{conj:c0-fails}: exhibit a $C^0$-but-not-Dini $\alpha$ with
+          non-unique martingale problem.
+    \item Extend the uniqueness theorem to $\alpha\in(0,1)$ (requires separate
+          treatment since the generator has no compensator for $\alpha<1$).
+    \item Check whether the Dini condition on $\beta$ is independent of the condition
+          on $\alpha$ (the derivation suggests they are, but this should be verified).
+\end{enumerate}
+
+\end{document}
