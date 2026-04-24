@@ -1,0 +1,18 @@
+# Shared baseline for all Innovation projects.
+# Each project's requirements.txt starts with -r ../base-requirements.txt
+
+# HTTP / APIs
+requests
+httpx
+
+# Data
+pandas
+numpy
+
+# Browser automation (gstack / Playwright)
+playwright
+
+# Utilities
+python-dotenv
+rich          # pretty terminal output
+typer         # quick CLIs

@@ -1,0 +1,2 @@
+-r ../base-requirements.txt
+# Add project-specific packages below
