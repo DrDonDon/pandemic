@@ -1,0 +1,22 @@
+# Core compute
+numpy
+scipy
+sympy
+matplotlib
+
+# Dynamical systems & SDEs
+# diffrax  # JAX-based SDE/ODE solver — install separately if JAX available
+
+# Optimization
+cvxpy
+
+# AI brain
+anthropic
+
+# ArXiv
+arxiv
+
+# Utilities
+rich          # pretty terminal output
+python-dotenv # ANTHROPIC_API_KEY from .env
+jupyterlab    # notebook environment
