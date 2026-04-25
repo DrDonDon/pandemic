@@ -9,10 +9,12 @@ gstack skills are Markdown files that Claude Code discovers from a `skills/` dir
 That's what dev mode does. It symlinks your repo into the local `.claude/skills/` directory so Claude Code reads skills straight from your checkout.
 
 ```bash
-git clone <repo> && cd gstack
+git clone https://github.com/garrytan/gstack.git && cd gstack
 bun install                    # install dependencies
 bin/dev-setup                  # activate dev mode
 ```
+
+> **Full clone vs shallow.** The README's user-facing install uses `--depth 1` for speed. As a contributor, use a full clone (no `--depth` flag) — you'll need history for `git log`, `git blame`, `git bisect`, and reviewing PRs against earlier versions. If you already have a `--depth 1` clone from following the README, promote it to a full clone with `git fetch --unshallow`.
 
 Now edit any `SKILL.md`, invoke it in Claude Code (e.g. `/review`), and see your changes live. When you're done developing:
 
@@ -216,11 +218,10 @@ SKILL.md files are **generated** from `.tmpl` templates. Don't edit the `.md` di
 # 1. Edit the template
 vim SKILL.md.tmpl              # or browse/SKILL.md.tmpl
 
-# 2. Regenerate for both hosts
-bun run gen:skill-docs
-bun run gen:skill-docs --host codex
+# 2. Regenerate for all hosts
+bun run gen:skill-docs --host all
 
-# 3. Check health (reports both Claude and Codex)
+# 3. Check health (reports all hosts)
 bun run skill:check
 
 # Or use watch mode — auto-regenerates on save
@@ -231,59 +232,93 @@ For template authoring best practices (natural language over bash-isms, dynamic 
 
 To add a browse command, add it to `browse/src/commands.ts`. To add a snapshot flag, add it to `SNAPSHOT_FLAGS` in `browse/src/snapshot.ts`. Then rebuild.
 
-## Dual-host development (Claude + Codex)
+## Jargon list (V1 writing style)
 
-gstack generates SKILL.md files for two hosts: **Claude** (`.claude/skills/`) and **Codex** (`.agents/skills/`). Every template change needs to be generated for both.
+gstack's Writing Style section (injected into every tier-≥2 skill's preamble)
+glosses technical terms on first use per skill invocation. The list of terms
+that qualify for glossing lives at `scripts/jargon-list.json` — ~50 curated
+high-frequency terms (idempotent, race condition, N+1, backpressure, etc.).
+Terms not on the list are assumed plain-English enough.
 
-### Generating for both hosts
+**Adding or removing a term:** open a PR editing `scripts/jargon-list.json`.
+Run `bun run gen:skill-docs` after the edit — terms are baked into every
+generated SKILL.md at gen time, so changes take effect only after regeneration.
+No runtime loading; no user-side override. The repo list is the source of truth.
+
+Good candidates for addition: high-frequency terms that non-technical users
+encounter in review output without context (common database/concurrency
+terminology, security jargon, frontend framework concepts). Don't add terms
+that only appear in one or two niche skills — the cost-to-value trade isn't
+worth the review overhead.
+
+## Multi-host development
+
+gstack generates SKILL.md files for 8 hosts from one set of `.tmpl` templates.
+Each host is a typed config in `hosts/*.ts`. The generator reads these configs
+to produce host-appropriate output (different frontmatter, paths, tool names).
+
+**Supported hosts:** Claude (primary), Codex, Factory, Kiro, OpenCode, Slate, Cursor, OpenClaw.
+
+### Generating for all hosts
 
 ```bash
-# Generate Claude output (default)
-bun run gen:skill-docs
+# Generate for a specific host
+bun run gen:skill-docs                    # Claude (default)
+bun run gen:skill-docs --host codex       # Codex
+bun run gen:skill-docs --host opencode    # OpenCode
+bun run gen:skill-docs --host all         # All 8 hosts
 
-# Generate Codex output
-bun run gen:skill-docs --host codex
-# --host agents is an alias for --host codex
-
-# Or use build, which does both + compiles binaries
+# Or use build, which does all hosts + compiles binaries
 bun run build
 ```
 
 ### What changes between hosts
 
-| Aspect | Claude | Codex |
-|--------|--------|-------|
-| Output directory | `{skill}/SKILL.md` | `.agents/skills/gstack-{skill}/SKILL.md` (generated at setup, gitignored) |
-| Frontmatter | Full (name, description, voice-triggers, allowed-tools, hooks, version) | Minimal (name + description only) |
-| Paths | `~/.claude/skills/gstack` | `$GSTACK_ROOT` (`.agents/skills/gstack` in a repo, otherwise `~/.codex/skills/gstack`) |
-| Hook skills | `hooks:` frontmatter (enforced by Claude) | Inline safety advisory prose (advisory only) |
-| `/codex` skill | Included (Claude wraps codex exec) | Excluded (self-referential) |
+Each host config (`hosts/*.ts`) controls:
 
-### Testing Codex output
+| Aspect | Example (Claude vs Codex) |
+|--------|---------------------------|
+| Output directory | `{skill}/SKILL.md` vs `.agents/skills/gstack-{skill}/SKILL.md` |
+| Frontmatter | Full (name, description, hooks, version) vs minimal (name + description) |
+| Paths | `~/.claude/skills/gstack` vs `$GSTACK_ROOT` |
+| Tool names | "use the Bash tool" vs same (Factory rewrites to "run this command") |
+| Hook skills | `hooks:` frontmatter vs inline safety advisory prose |
+| Suppressed sections | None vs Codex self-invocation sections stripped |
+
+See `scripts/host-config.ts` for the full `HostConfig` interface.
+
+### Testing host output
 
 ```bash
-# Run all static tests (includes Codex validation)
+# Run all static tests (includes parameterized smoke tests for all hosts)
 bun test
 
-# Check freshness for both hosts
-bun run gen:skill-docs --dry-run
-bun run gen:skill-docs --host codex --dry-run
+# Check freshness for all hosts
+bun run gen:skill-docs --host all --dry-run
 
-# Health dashboard covers both hosts
+# Health dashboard covers all hosts
 bun run skill:check
 ```
 
-### Dev setup for .agents/
+### Adding a new host
 
-When you run `bin/dev-setup`, it creates symlinks in both `.claude/skills/` and `.agents/skills/` (if applicable), so Codex-compatible agents can discover your dev skills too. The `.agents/` directory is generated at setup time from `.tmpl` templates — it is gitignored and not committed.
+See [docs/ADDING_A_HOST.md](docs/ADDING_A_HOST.md) for the full guide. Short version:
+
+1. Create `hosts/myhost.ts` (copy from `hosts/opencode.ts`)
+2. Add to `hosts/index.ts`
+3. Add `.myhost/` to `.gitignore`
+4. Run `bun run gen:skill-docs --host myhost`
+5. Run `bun test` (parameterized tests auto-cover it)
+
+Zero generator, setup, or tooling code changes needed.
 
 ### Adding a new skill
 
-When you add a new skill template, both hosts get it automatically:
+When you add a new skill template, all hosts get it automatically:
 1. Create `{skill}/SKILL.md.tmpl`
-2. Run `bun run gen:skill-docs` (Claude output) and `bun run gen:skill-docs --host codex` (Codex output)
-3. The dynamic template discovery picks it up — no static list to update
-4. Commit `{skill}/SKILL.md` — `.agents/` is generated at setup time and gitignored
+2. Run `bun run gen:skill-docs --host all`
+3. The dynamic template discovery picks it up, no static list to update
+4. Commit `{skill}/SKILL.md`, external host output is generated at setup time and gitignored
 
 ## Conductor workspaces
 
@@ -353,7 +388,7 @@ to `gstack/...`, so they'll resolve to the global install automatically.
 
 ### Switching prefix mode
 
-If you vendored gstack with one prefix setting and want to switch:
+If you installed gstack with one prefix setting and want to switch:
 
 ```bash
 cd .claude/skills/gstack && ./setup --no-prefix   # switch to /qa, /ship

@@ -11,6 +11,11 @@ allowed-tools:
   - Bash
   - Read
   - AskUserQuestion
+triggers:
+  - browse this page
+  - take a screenshot
+  - navigate to url
+  - inspect the page
 
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
@@ -44,6 +49,14 @@ _TEL_START=$(date +%s)
 _SESSION_ID="$$-$(date +%s)"
 echo "TELEMETRY: ${_TEL:-off}"
 echo "TEL_PROMPTED: $_TEL_PROMPTED"
+# Writing style verbosity (V1: default = ELI10, terse = tighter V0 prose.
+# Read on every skill run so terse mode takes effect without a restart.)
+_EXPLAIN_LEVEL=$(~/.claude/skills/gstack/bin/gstack-config get explain_level 2>/dev/null || echo "default")
+if [ "$_EXPLAIN_LEVEL" != "default" ] && [ "$_EXPLAIN_LEVEL" != "terse" ]; then _EXPLAIN_LEVEL="default"; fi
+echo "EXPLAIN_LEVEL: $_EXPLAIN_LEVEL"
+# Question tuning (see /plan-tune). Observational only in V1.
+_QUESTION_TUNING=$(~/.claude/skills/gstack/bin/gstack-config get question_tuning 2>/dev/null || echo "false")
+echo "QUESTION_TUNING: $_QUESTION_TUNING"
 mkdir -p ~/.gstack/analytics
 if [ "$_TEL" != "off" ]; then
 echo '{"skill":"gstack","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
@@ -80,7 +93,38 @@ fi
 _ROUTING_DECLINED=$(~/.claude/skills/gstack/bin/gstack-config get routing_declined 2>/dev/null || echo "false")
 echo "HAS_ROUTING: $_HAS_ROUTING"
 echo "ROUTING_DECLINED: $_ROUTING_DECLINED"
+# Vendoring deprecation: detect if CWD has a vendored gstack copy
+_VENDORED="no"
+if [ -d ".claude/skills/gstack" ] && [ ! -L ".claude/skills/gstack" ]; then
+  if [ -f ".claude/skills/gstack/VERSION" ] || [ -d ".claude/skills/gstack/.git" ]; then
+    _VENDORED="yes"
+  fi
+fi
+echo "VENDORED_GSTACK: $_VENDORED"
+echo "MODEL_OVERLAY: claude"
+# Checkpoint mode (explicit = no auto-commit, continuous = WIP commits as you go)
+_CHECKPOINT_MODE=$(~/.claude/skills/gstack/bin/gstack-config get checkpoint_mode 2>/dev/null || echo "explicit")
+_CHECKPOINT_PUSH=$(~/.claude/skills/gstack/bin/gstack-config get checkpoint_push 2>/dev/null || echo "false")
+echo "CHECKPOINT_MODE: $_CHECKPOINT_MODE"
+echo "CHECKPOINT_PUSH: $_CHECKPOINT_PUSH"
+# Detect spawned session (OpenClaw or other orchestrator)
+[ -n "$OPENCLAW_SESSION" ] && echo "SPAWNED_SESSION: true" || true
 ```
+
+## Plan Mode Safe Operations
+
+In plan mode, these are always allowed (they inform the plan, don't modify source):
+`$B` (browse), `$D` (design), `codex exec`/`codex review`, writes to `~/.gstack/`,
+writes to the plan file, `open` for generated artifacts.
+
+## Skill Invocation During Plan Mode
+
+If the user invokes a skill in plan mode, that skill takes precedence over generic plan mode behavior. Treat it as executable instructions, not reference. Follow step
+by step. AskUserQuestion calls satisfy plan mode's end-of-turn requirement. At a STOP
+point, stop immediately. Do not continue the workflow past a STOP point and do not call ExitPlanMode there. Commands marked "PLAN
+MODE EXCEPTION — ALWAYS RUN" execute. Other writes need to be already permitted
+above or explicitly exception-marked. Call ExitPlanMode only after the skill
+workflow completes — only then call ExitPlanMode (or if the user tells you to cancel the skill or leave plan mode).
 
 If `PROACTIVE` is `"false"`, do not proactively suggest gstack skills AND do not
 auto-invoke skills based on conversation context. Only run skills the user explicitly
@@ -93,7 +137,61 @@ or invoking other gstack skills, use the `/gstack-` prefix (e.g., `/gstack-qa` i
 of `/qa`, `/gstack-ship` instead of `/ship`). Disk paths are unaffected — always use
 `~/.claude/skills/gstack/[skill-name]/SKILL.md` for reading skill files.
 
-If output shows `UPGRADE_AVAILABLE <old> <new>`: read `~/.claude/skills/gstack/gstack-upgrade/SKILL.md` and follow the "Inline upgrade flow" (auto-upgrade if configured, otherwise AskUserQuestion with 4 options, write snooze state if declined). If `JUST_UPGRADED <from> <to>`: tell user "Running gstack v{to} (just updated!)" and continue.
+If output shows `UPGRADE_AVAILABLE <old> <new>`: read `~/.claude/skills/gstack/gstack-upgrade/SKILL.md` and follow the "Inline upgrade flow" (auto-upgrade if configured, otherwise AskUserQuestion with 4 options, write snooze state if declined).
+
+If output shows `JUST_UPGRADED <from> <to>` AND `SPAWNED_SESSION` is NOT set: tell
+the user "Running gstack v{to} (just updated!)" and then check for new features to
+surface. For each per-feature marker below, if the marker file is missing AND the
+feature is plausibly useful for this user, use AskUserQuestion to let them try it.
+Fire once per feature per user, NOT once per upgrade.
+
+**In spawned sessions (`SPAWNED_SESSION` = "true"): SKIP feature discovery entirely.**
+Just print "Running gstack v{to}" and continue. Orchestrators do not want interactive
+prompts from sub-sessions.
+
+**Feature discovery markers and prompts** (one at a time, max one per session):
+
+1. `~/.claude/skills/gstack/.feature-prompted-continuous-checkpoint` →
+   Prompt: "Continuous checkpoint auto-commits your work as you go with `WIP:` prefix
+   so you never lose progress to a crash. Local-only by default — doesn't push
+   anywhere unless you turn that on. Want to try it?"
+   Options: A) Enable continuous mode, B) Show me first (print the section from
+   the preamble Continuous Checkpoint Mode), C) Skip.
+   If A: run `~/.claude/skills/gstack/bin/gstack-config set checkpoint_mode continuous`.
+   Always: `touch ~/.claude/skills/gstack/.feature-prompted-continuous-checkpoint`
+
+2. `~/.claude/skills/gstack/.feature-prompted-model-overlay` →
+   Inform only (no prompt): "Model overlays are active. `MODEL_OVERLAY: {model}`
+   shown in the preamble output tells you which behavioral patch is applied.
+   Override with `--model` when regenerating skills (e.g., `bun run gen:skill-docs
+   --model gpt-5.4`). Default is claude."
+   Always: `touch ~/.claude/skills/gstack/.feature-prompted-model-overlay`
+
+After handling JUST_UPGRADED (prompts done or skipped), continue with the skill
+workflow.
+
+If `WRITING_STYLE_PENDING` is `yes`: You're on the first skill run after upgrading
+to gstack v1. Ask the user once about the new default writing style. Use AskUserQuestion:
+
+> v1 prompts = simpler. Technical terms get a one-sentence gloss on first use,
+> questions are framed in outcome terms, sentences are shorter.
+>
+> Keep the new default, or prefer the older tighter prose?
+
+Options:
+- A) Keep the new default (recommended — good writing helps everyone)
+- B) Restore V0 prose — set `explain_level: terse`
+
+If A: leave `explain_level` unset (defaults to `default`).
+If B: run `~/.claude/skills/gstack/bin/gstack-config set explain_level terse`.
+
+Always run (regardless of choice):
+```bash
+rm -f ~/.gstack/.writing-style-prompt-pending
+touch ~/.gstack/.writing-style-prompted
+```
+
+This only happens once. If `WRITING_STYLE_PENDING` is `no`, skip this entirely.
 
 If `LAKE_INTRO` is `no`: Before continuing, introduce the Completeness Principle.
 Tell the user: "gstack follows the **Boil the Lake** principle — always do the complete
@@ -180,23 +278,44 @@ If A: Append this section to the end of CLAUDE.md:
 
 ## Skill routing
 
-When the user's request matches an available skill, ALWAYS invoke it using the Skill
-tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
-The skill has specialized workflows that produce better results than ad-hoc answers.
+When the user's request matches an available skill, invoke it via the Skill tool. The
+skill has multi-step workflows, checklists, and quality gates that produce better
+results than an ad-hoc answer. When in doubt, invoke the skill. A false positive is
+cheaper than a false negative.
 
 Key routing rules:
-- Product ideas, "is this worth building", brainstorming → invoke office-hours
-- Bugs, errors, "why is this broken", 500 errors → invoke investigate
-- Ship, deploy, push, create PR → invoke ship
-- QA, test the site, find bugs → invoke qa
-- Code review, check my diff → invoke review
-- Update docs after shipping → invoke document-release
-- Weekly retro → invoke retro
-- Design system, brand → invoke design-consultation
-- Visual audit, design polish → invoke design-review
-- Architecture review → invoke plan-eng-review
-- Save progress, checkpoint, resume → invoke checkpoint
-- Code quality, health check → invoke health
+- Product ideas, "is this worth building", brainstorming → invoke /office-hours
+- Strategy, scope, "think bigger", "what should we build" → invoke /plan-ceo-review
+- Architecture, "does this design make sense" → invoke /plan-eng-review
+- Design system, brand, "how should this look" → invoke /design-consultation
+- Design review of a plan → invoke /plan-design-review
+- Developer experience of a plan → invoke /plan-devex-review
+- "Review everything", full review pipeline → invoke /autoplan
+- Bugs, errors, "why is this broken", "wtf", "this doesn't work" → invoke /investigate
+- Test the site, find bugs, "does this work" → invoke /qa (or /qa-only for report only)
+- Code review, check the diff, "look at my changes" → invoke /review
+- Visual polish, design audit, "this looks off" → invoke /design-review
+- Developer experience audit, try onboarding → invoke /devex-review
+- Ship, deploy, create a PR, "send it" → invoke /ship
+- Merge + deploy + verify → invoke /land-and-deploy
+- Configure deployment → invoke /setup-deploy
+- Post-deploy monitoring → invoke /canary
+- Update docs after shipping → invoke /document-release
+- Weekly retro, "how'd we do" → invoke /retro
+- Second opinion, codex review → invoke /codex
+- Safety mode, careful mode, lock it down → invoke /careful or /guard
+- Restrict edits to a directory → invoke /freeze or /unfreeze
+- Upgrade gstack → invoke /gstack-upgrade
+- Save progress, "save my work" → invoke /context-save
+- Resume, restore, "where was I" → invoke /context-restore
+- Security audit, OWASP, "is this secure" → invoke /cso
+- Make a PDF, document, publication → invoke /make-pdf
+- Launch real browser for QA → invoke /open-gstack-browser
+- Import cookies for authenticated testing → invoke /setup-browser-cookies
+- Performance regression, page speed, benchmarks → invoke /benchmark
+- Review what gstack has learned → invoke /learn
+- Tune question sensitivity → invoke /plan-tune
+- Code quality dashboard → invoke /health
 ```
 
 Then commit the change: `git add CLAUDE.md && git commit -m "chore: add gstack skill routing rules to CLAUDE.md"`
@@ -205,6 +324,162 @@ If B: run `~/.claude/skills/gstack/bin/gstack-config set routing_declined true`
 Say "No problem. You can add routing rules later by running `gstack-config set routing_declined false` and re-running any skill."
 
 This only happens once per project. If `HAS_ROUTING` is `yes` or `ROUTING_DECLINED` is `true`, skip this entirely.
+
+If `VENDORED_GSTACK` is `yes`: This project has a vendored copy of gstack at
+`.claude/skills/gstack/`. Vendoring is deprecated. We will not keep vendored copies
+up to date, so this project's gstack will fall behind.
+
+Use AskUserQuestion (one-time per project, check for `~/.gstack/.vendoring-warned-$SLUG` marker):
+
+> This project has gstack vendored in `.claude/skills/gstack/`. Vendoring is deprecated.
+> We won't keep this copy up to date, so you'll fall behind on new features and fixes.
+>
+> Want to migrate to team mode? It takes about 30 seconds.
+
+Options:
+- A) Yes, migrate to team mode now
+- B) No, I'll handle it myself
+
+If A:
+1. Run `git rm -r .claude/skills/gstack/`
+2. Run `echo '.claude/skills/gstack/' >> .gitignore`
+3. Run `~/.claude/skills/gstack/bin/gstack-team-init required` (or `optional`)
+4. Run `git add .claude/ .gitignore CLAUDE.md && git commit -m "chore: migrate gstack from vendored to team mode"`
+5. Tell the user: "Done. Each developer now runs: `cd ~/.claude/skills/gstack && ./setup --team`"
+
+If B: say "OK, you're on your own to keep the vendored copy up to date."
+
+Always run (regardless of choice):
+```bash
+eval "$(~/.claude/skills/gstack/bin/gstack-slug 2>/dev/null)" 2>/dev/null || true
+touch ~/.gstack/.vendoring-warned-${SLUG:-unknown}
+```
+
+This only happens once per project. If the marker file exists, skip entirely.
+
+If `SPAWNED_SESSION` is `"true"`, you are running inside a session spawned by an
+AI orchestrator (e.g., OpenClaw). In spawned sessions:
+- Do NOT use AskUserQuestion for interactive prompts. Auto-choose the recommended option.
+- Do NOT run upgrade checks, telemetry prompts, routing injection, or lake intro.
+- Focus on completing the task and reporting results via prose output.
+- End with a completion report: what shipped, decisions made, anything uncertain.
+
+## GBrain Sync (skill start)
+
+```bash
+# gbrain-sync: drain pending writes, pull once per day. Silent no-op when
+# the feature isn't initialized or gbrain_sync_mode is "off". See
+# docs/gbrain-sync.md.
+
+_GSTACK_HOME="${GSTACK_HOME:-$HOME/.gstack}"
+_BRAIN_REMOTE_FILE="$HOME/.gstack-brain-remote.txt"
+_BRAIN_SYNC_BIN="~/.claude/skills/gstack/bin/gstack-brain-sync"
+_BRAIN_CONFIG_BIN="~/.claude/skills/gstack/bin/gstack-config"
+
+_BRAIN_SYNC_MODE=$("$_BRAIN_CONFIG_BIN" get gbrain_sync_mode 2>/dev/null || echo off)
+
+# New-machine hint: URL file present, local .git missing, sync not yet enabled.
+if [ -f "$_BRAIN_REMOTE_FILE" ] && [ ! -d "$_GSTACK_HOME/.git" ] && [ "$_BRAIN_SYNC_MODE" = "off" ]; then
+  _BRAIN_NEW_URL=$(head -1 "$_BRAIN_REMOTE_FILE" 2>/dev/null | tr -d '[:space:]')
+  if [ -n "$_BRAIN_NEW_URL" ]; then
+    echo "BRAIN_SYNC: brain repo detected: $_BRAIN_NEW_URL"
+    echo "BRAIN_SYNC: run 'gstack-brain-restore' to pull your cross-machine memory (or 'gstack-config set gbrain_sync_mode off' to dismiss forever)"
+  fi
+fi
+
+# Active-sync path.
+if [ -d "$_GSTACK_HOME/.git" ] && [ "$_BRAIN_SYNC_MODE" != "off" ]; then
+  # Once-per-day pull.
+  _BRAIN_LAST_PULL_FILE="$_GSTACK_HOME/.brain-last-pull"
+  _BRAIN_NOW=$(date +%s)
+  _BRAIN_DO_PULL=1
+  if [ -f "$_BRAIN_LAST_PULL_FILE" ]; then
+    _BRAIN_LAST=$(cat "$_BRAIN_LAST_PULL_FILE" 2>/dev/null || echo 0)
+    _BRAIN_AGE=$(( _BRAIN_NOW - _BRAIN_LAST ))
+    [ "$_BRAIN_AGE" -lt 86400 ] && _BRAIN_DO_PULL=0
+  fi
+  if [ "$_BRAIN_DO_PULL" = "1" ]; then
+    ( cd "$_GSTACK_HOME" && git fetch origin >/dev/null 2>&1 && git merge --ff-only "origin/$(git rev-parse --abbrev-ref HEAD)" >/dev/null 2>&1 ) || true
+    echo "$_BRAIN_NOW" > "$_BRAIN_LAST_PULL_FILE"
+  fi
+  # Drain pending queue, push.
+  "$_BRAIN_SYNC_BIN" --once 2>/dev/null || true
+fi
+
+# Status line — always emitted, easy to grep.
+if [ -d "$_GSTACK_HOME/.git" ] && [ "$_BRAIN_SYNC_MODE" != "off" ]; then
+  _BRAIN_QUEUE_DEPTH=0
+  [ -f "$_GSTACK_HOME/.brain-queue.jsonl" ] && _BRAIN_QUEUE_DEPTH=$(wc -l < "$_GSTACK_HOME/.brain-queue.jsonl" | tr -d ' ')
+  _BRAIN_LAST_PUSH="never"
+  [ -f "$_GSTACK_HOME/.brain-last-push" ] && _BRAIN_LAST_PUSH=$(cat "$_GSTACK_HOME/.brain-last-push" 2>/dev/null || echo never)
+  echo "BRAIN_SYNC: mode=$_BRAIN_SYNC_MODE | last_push=$_BRAIN_LAST_PUSH | queue=$_BRAIN_QUEUE_DEPTH"
+else
+  echo "BRAIN_SYNC: off"
+fi
+```
+
+
+
+**Privacy stop-gate (fires ONCE per machine).**
+
+If the bash output shows `BRAIN_SYNC: off` AND the config value
+`gbrain_sync_mode_prompted` is `false` AND gbrain is detected on this host
+(either `gbrain doctor --fast --json` succeeds or the `gbrain` binary is in PATH),
+fire a one-time privacy gate via AskUserQuestion:
+
+> gstack can publish your session memory (learnings, plans, designs, retros) to a
+> private GitHub repo that GBrain indexes across your machines. Higher tiers
+> include behavioral data (session timelines, developer profile). How much do you
+> want to sync?
+
+Options:
+- A) Everything allowlisted (recommended — maximum cross-machine memory)
+- B) Only artifacts (plans, designs, retros, learnings) — skip timelines and profile
+- C) Decline — keep everything local
+
+After the user answers, run (substituting the chosen value):
+
+```bash
+# Chosen mode: full | artifacts-only | off
+"$_BRAIN_CONFIG_BIN" set gbrain_sync_mode <choice>
+"$_BRAIN_CONFIG_BIN" set gbrain_sync_mode_prompted true
+```
+
+If A or B was chosen AND `~/.gstack/.git` doesn't exist, ask a follow-up:
+"Set up the GBrain sync repo now? (runs `gstack-brain-init`)"
+- A) Yes, run it now
+- B) Show me the command, I'll run it myself
+
+Do not block the skill. Emit the question, continue the skill workflow. The
+next skill run picks up wherever this left off.
+
+**At skill END (before the telemetry block),** run these bash commands to
+catch artifact writes (design docs, plans, retros) that skipped the writer
+shims, plus drain any still-pending queue entries:
+
+```bash
+"~/.claude/skills/gstack/bin/gstack-brain-sync" --discover-new 2>/dev/null || true
+"~/.claude/skills/gstack/bin/gstack-brain-sync" --once 2>/dev/null || true
+```
+
+
+## Model-Specific Behavioral Patch (claude)
+
+The following nudges are tuned for the claude model family. They are
+**subordinate** to skill workflow, STOP points, AskUserQuestion gates, plan-mode
+safety, and /ship review gates. If a nudge below conflicts with skill instructions,
+the skill wins. Treat these as preferences, not rules.
+
+**Todo-list discipline.** When working through a multi-step plan, mark each task
+complete individually as you finish it. Do not batch-complete at the end. If a task
+turns out to be unnecessary, mark it skipped with a one-line reason.
+
+**Think before heavy actions.** For complex operations (refactors, migrations,
+non-trivial new features), briefly state your approach before executing. This lets
+the user course-correct cheaply instead of mid-flight.
+
+**Dedicated tools over Bash.** Prefer Read, Edit, Write, Glob, Grep over shell
+equivalents (cat, sed, find, grep). The dedicated tools are cheaper and clearer.
 
 ## Voice
 
@@ -294,57 +569,16 @@ success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was
 If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
 remote binary only runs if telemetry is not off and the binary exists.
 
-## Plan Mode Safe Operations
-
-When in plan mode, these operations are always allowed because they produce
-artifacts that inform the plan, not code changes:
-
-- `$B` commands (browse: screenshots, page inspection, navigation, snapshots)
-- `$D` commands (design: generate mockups, variants, comparison boards, iterate)
-- `codex exec` / `codex review` (outside voice, plan review, adversarial challenge)
-- Writing to `~/.gstack/` (config, analytics, review logs, design artifacts, learnings)
-- Writing to the plan file (already allowed by plan mode)
-- `open` commands for viewing generated artifacts (comparison boards, HTML previews)
-
-These are read-only in spirit — they inspect the live site, generate visual artifacts,
-or get independent opinions. They do NOT modify project source files.
-
 ## Plan Status Footer
 
-When you are in plan mode and about to call ExitPlanMode:
+In plan mode, before ExitPlanMode: if the plan file lacks a `## GSTACK REVIEW REPORT`
+section, run `~/.claude/skills/gstack/bin/gstack-review-read` and append a report.
+With JSONL entries (before `---CONFIG---`), format the standard runs/status/findings
+table. With `NO_REVIEWS` or empty, append a 5-row placeholder table (CEO/Codex/Eng/
+Design/DX Review) with all zeros and verdict "NO REVIEWS YET — run `/autoplan`".
+If a richer review report already exists, skip — review skills wrote it.
 
-1. Check if the plan file already has a `## GSTACK REVIEW REPORT` section.
-2. If it DOES — skip (a review skill already wrote a richer report).
-3. If it does NOT — run this command:
-
-\`\`\`bash
-~/.claude/skills/gstack/bin/gstack-review-read
-\`\`\`
-
-Then write a `## GSTACK REVIEW REPORT` section to the end of the plan file:
-
-- If the output contains review entries (JSONL lines before `---CONFIG---`): format the
-  standard report table with runs/status/findings per skill, same format as the review
-  skills use.
-- If the output is `NO_REVIEWS` or empty: write this placeholder table:
-
-\`\`\`markdown
-## GSTACK REVIEW REPORT
-
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | \`/plan-ceo-review\` | Scope & strategy | 0 | — | — |
-| Codex Review | \`/codex review\` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | \`/plan-eng-review\` | Architecture & tests (required) | 0 | — | — |
-| Design Review | \`/plan-design-review\` | UI/UX gaps | 0 | — | — |
-| DX Review | \`/plan-devex-review\` | Developer experience gaps | 0 | — | — |
-
-**VERDICT:** NO REVIEWS YET — run \`/autoplan\` for full review pipeline, or individual reviews above.
-\`\`\`
-
-**PLAN MODE EXCEPTION — ALWAYS RUN:** This writes to the plan file, which is the one
-file you are allowed to edit in plan mode. The plan file review report is part of the
-plan's living status.
+PLAN MODE EXCEPTION — always allowed (it's the plan file).
 
 If `PROACTIVE` is `false`: do NOT proactively invoke or suggest other gstack skills during
 this session. Only run skills the user explicitly invokes. This preference persists across
@@ -356,27 +590,45 @@ Use the Skill tool to invoke it. The skill has specialized workflows, checklists
 quality gates that produce better results than answering inline.
 
 **Routing rules — when you see these patterns, INVOKE the skill via the Skill tool:**
-- User describes a new idea, asks "is this worth building", wants to brainstorm → invoke `/office-hours`
-- User asks about strategy, scope, ambition, "think bigger" → invoke `/plan-ceo-review`
-- User asks to review architecture, lock in the plan → invoke `/plan-eng-review`
-- User asks about design system, brand, visual identity → invoke `/design-consultation`
+- User describes a new idea, asks "is this worth building", brainstorms, pitches a concept → invoke `/office-hours`
+- User asks about strategy, scope, ambition, "think bigger", "what should we build" → invoke `/plan-ceo-review`
+- User asks to review architecture, lock in the plan, "does this design make sense" → invoke `/plan-eng-review`
+- User asks about design system, brand, visual identity, "how should this look" → invoke `/design-consultation`
 - User asks to review design of a plan → invoke `/plan-design-review`
-- User wants all reviews done automatically → invoke `/autoplan`
-- User reports a bug, error, broken behavior, asks "why is this broken" → invoke `/investigate`
-- User asks to test the site, find bugs, QA → invoke `/qa`
-- User asks to review code, check the diff, pre-landing review → invoke `/review`
-- User asks about visual polish, design audit of a live site → invoke `/design-review`
-- User asks to ship, deploy, push, create a PR → invoke `/ship`
+- User asks about developer experience of a plan, API/CLI/SDK design → invoke `/plan-devex-review`
+- User wants all reviews done automatically, "review everything" → invoke `/autoplan`
+- User reports a bug, error, broken behavior, "why is this broken", "this doesn't work", "wtf", "something's wrong" → invoke `/investigate`
+- User asks to test the site, find bugs, QA, "does this work", "check the deploy" → invoke `/qa`
+- User asks to just report bugs without fixing → invoke `/qa-only`
+- User asks to review code, check the diff, pre-landing review, "look at my changes" → invoke `/review`
+- User asks about visual polish, design audit of a live site, "this looks off" → invoke `/design-review`
+- User asks to audit the live developer experience, time-to-hello-world → invoke `/devex-review`
+- User asks to ship, deploy, push, create a PR, "let's land this", "send it" → invoke `/ship`
+- User asks to merge + deploy + verify as one flow → invoke `/land-and-deploy`
+- User asks to configure deployment for the project → invoke `/setup-deploy`
+- User asks to monitor prod after shipping, post-deploy checks → invoke `/canary`
 - User asks to update docs after shipping → invoke `/document-release`
-- User asks for a weekly retro, what did we ship → invoke `/retro`
+- User asks for a weekly retro, what did we ship, "how'd we do" → invoke `/retro`
 - User asks for a second opinion, codex review → invoke `/codex`
 - User asks for safety mode, careful mode → invoke `/careful` or `/guard`
 - User asks to restrict edits to a directory → invoke `/freeze` or `/unfreeze`
 - User asks to upgrade gstack → invoke `/gstack-upgrade`
+- User asks to save progress, checkpoint, "save my work" → invoke `/context-save`
+- User asks to resume, restore, "where was I" → invoke `/context-restore`
+- User asks about security, OWASP, vulnerabilities, "is this secure" → invoke `/cso`
+- User asks to make a PDF, document, publication → invoke `/make-pdf`
+- User asks to launch a real browser for QA, "open the browser" → invoke `/open-gstack-browser`
+- User asks to import cookies for authenticated testing → invoke `/setup-browser-cookies`
+- User asks about page speed, performance regression, benchmarks → invoke `/benchmark`
+- User asks what gstack has learned, "show learnings" → invoke `/learn`
+- User asks to tune question sensitivity, "stop asking me that" → invoke `/plan-tune`
+- User asks for code quality dashboard, "health check" → invoke `/health`
 
-**Do NOT answer the user's question directly when a matching skill exists.** The skill
-provides a structured, multi-step workflow that is always better than an ad-hoc answer.
-Invoke the skill first. If no skill matches, answer directly as usual.
+**When in doubt, invoke the skill.** A false positive (invoking a skill that wasn't
+needed) is cheaper than a false negative (answering ad-hoc when a structured workflow
+exists). The skill provides multi-step workflows, checklists, and quality gates that
+always produce better results than an ad-hoc answer. If no skill matches, answer
+directly as usual.
 
 If the user opts out of suggestions, run `gstack-config set proactive false`.
 If they opt back in, run `gstack-config set proactive true`.
@@ -392,7 +644,7 @@ Auto-shuts down after 30 min idle. State persists between calls (cookies, tabs, 
 _ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 B=""
 [ -n "$_ROOT" ] && [ -x "$_ROOT/.claude/skills/gstack/browse/dist/browse" ] && B="$_ROOT/.claude/skills/gstack/browse/dist/browse"
-[ -z "$B" ] && B=~/.claude/skills/gstack/browse/dist/browse
+[ -z "$B" ] && B="$HOME/.claude/skills/gstack/browse/dist/browse"
 if [ -x "$B" ]; then
   echo "READY: $B"
 else
@@ -632,20 +884,30 @@ $B css ".button" "background-color"
 ## Snapshot System
 
 The snapshot is your primary tool for understanding and interacting with pages.
+`$B` is the browse binary (resolved from `$_ROOT/.claude/skills/gstack/browse/dist/browse` or `~/.claude/skills/gstack/browse/dist/browse`).
+
+**Syntax:** `$B snapshot [flags]`
 
 ```
--i        --interactive           Interactive elements only (buttons, links, inputs) with @e refs
+-i        --interactive           Interactive elements only (buttons, links, inputs) with @e refs. Also auto-enables cursor-interactive scan (-C) to capture dropdowns and popovers.
 -c        --compact               Compact (no empty structural nodes)
 -d <N>    --depth                 Limit tree depth (0 = root only, default: unlimited)
 -s <sel>  --selector              Scope to CSS selector
 -D        --diff                  Unified diff against previous snapshot (first call stores baseline)
 -a        --annotate              Annotated screenshot with red overlay boxes and ref labels
 -o <path> --output                Output path for annotated screenshot (default: <temp>/browse-annotated.png)
--C        --cursor-interactive    Cursor-interactive elements (@c refs — divs with pointer, onclick)
+-C        --cursor-interactive    Cursor-interactive elements (@c refs — divs with pointer, onclick). Auto-enabled when -i is used.
+-H <json> --heatmap               Color-coded overlay screenshot from JSON map: '{"@e1":"green","@e3":"red"}'. Valid colors: green, yellow, red, blue, orange, gray.
 ```
 
 All flags can be combined freely. `-o` only applies when `-a` is also used.
 Example: `$B snapshot -i -a -C -o /tmp/annotated.png`
+
+**Flag details:**
+- `-d <N>`: depth 0 = root element only, 1 = root + direct children, etc. Default: unlimited. Works with all other flags including `-i`.
+- `-s <sel>`: any valid CSS selector (`#main`, `.content`, `nav > ul`, `[data-testid="hero"]`). Scopes the tree to that subtree.
+- `-D`: outputs a unified diff (lines prefixed with `+`/`-`/` `) comparing the current snapshot against the previous one. First call stores the baseline and returns the full tree. Baseline persists across navigations until the next `-D` call resets it.
+- `-a`: saves an annotated screenshot (PNG) with red overlay boxes and @ref labels drawn on each interactive element. The screenshot is a separate output from the text tree — both are produced when `-a` is used.
 
 **Ref numbering:** @e refs are assigned sequentially (@e1, @e2, ...) in tree order.
 @c refs from `-C` are numbered separately (@c1, @c2, ...).
@@ -673,7 +935,8 @@ Refs are invalidated on navigation — run `snapshot` again after `goto`.
 |---------|-------------|
 | `back` | History back |
 | `forward` | History forward |
-| `goto <url>` | Navigate to URL |
+| `goto <url>` | Navigate to URL (http://, https://, or file:// scoped to cwd/TEMP_DIR) |
+| `load-html <file> [--wait-until load|domcontentloaded|networkidle] [--tab-id <N>]  |  load-html --from-file <payload.json> [--tab-id <N>]` | Load HTML via setContent. Accepts a file path under safe-dirs (validated), OR --from-file <payload.json> with {"html":"...","waitUntil":"..."} for large inline HTML (Windows argv safe). |
 | `reload` | Reload page |
 | `url` | Print current URL |
 
@@ -690,10 +953,19 @@ Refs are invalidated on navigation — run `snapshot` again after `goto`.
 | Command | Description |
 |---------|-------------|
 | `accessibility` | Full ARIA tree |
+| `data [--jsonld|--og|--meta|--twitter]` | Structured data: JSON-LD, Open Graph, Twitter Cards, meta tags |
 | `forms` | Form fields as JSON |
 | `html [selector]` | innerHTML of selector (throws if not found), or full page HTML if no selector given |
 | `links` | All links as "text → href" |
+| `media [--images|--videos|--audio] [selector]` | All media elements (images, videos, audio) with URLs, dimensions, types |
 | `text` | Cleaned page text |
+
+### Extraction
+| Command | Description |
+|---------|-------------|
+| `archive [path]` | Save complete page as MHTML via CDP |
+| `download <url|@ref> [path] [--base64]` | Download URL or media element to disk using browser cookies |
+| `scrape <images|videos|media> [--selector sel] [--dir path] [--limit N]` | Bulk download all media from page. Writes manifest.json |
 
 ### Interaction
 | Command | Description |
@@ -715,7 +987,7 @@ Refs are invalidated on navigation — run `snapshot` again after `goto`.
 | `type <text>` | Type into focused element |
 | `upload <sel> <file> [file2...]` | Upload file(s) |
 | `useragent <string>` | Set user agent |
-| `viewport <WxH>` | Set viewport size |
+| `viewport [<WxH>] [--scale <n>]` | Set viewport size and optional deviceScaleFactor (1-3, for retina screenshots). --scale requires a context rebuild. |
 | `wait <sel|--networkidle|--load>` | Wait for element, network idle, or page load (timeout: 15s) |
 
 ### Inspection
@@ -733,15 +1005,16 @@ Refs are invalidated on navigation — run `snapshot` again after `goto`.
 | `network [--clear]` | Network requests |
 | `perf` | Page load timings |
 | `storage [set k v]` | Read all localStorage + sessionStorage as JSON, or set <key> <value> to write localStorage |
+| `ux-audit` | Extract page structure for UX behavioral analysis — site ID, nav, headings, text blocks, interactive elements. Returns JSON for agent interpretation. |
 
 ### Visual
 | Command | Description |
 |---------|-------------|
 | `diff <url1> <url2>` | Text diff between pages |
-| `pdf [path]` | Save as PDF |
+| `pdf [path] [--format letter|a4|legal] [--width <dim> --height <dim>] [--margins <dim>] [--margin-top <dim> --margin-right <dim> --margin-bottom <dim> --margin-left <dim>] [--header-template <html>] [--footer-template <html>] [--page-numbers] [--tagged] [--outline] [--print-background] [--prefer-css-page-size] [--toc] [--tab-id <N>]  |  pdf --from-file <payload.json> [--tab-id <N>]` | Save the current page as PDF. Supports page layout (--format, --width, --height, --margins, --margin-*), structure (--toc waits for Paged.js), branding (--header-template, --footer-template, --page-numbers), accessibility (--tagged, --outline), and --from-file <payload.json> for large payloads. Use --tab-id <N> to target a specific tab. |
 | `prettyscreenshot [--scroll-to sel|text] [--cleanup] [--hide sel...] [--width px] [path]` | Clean screenshot with optional cleanup, scroll positioning, and element hiding |
 | `responsive [prefix]` | Screenshots at mobile (375x812), tablet (768x1024), desktop (1280x720). Saves as {prefix}-mobile.png etc. |
-| `screenshot [--viewport] [--clip x,y,w,h] [selector|@ref] [path]` | Save screenshot (supports element crop via CSS/@ref, --clip region, --viewport) |
+| `screenshot [--selector <css>] [--viewport] [--clip x,y,w,h] [--base64] [selector|@ref] [path]` | Save screenshot. --selector targets a specific element (explicit flag form). Positional selectors starting with ./#/@/[ still work. |
 
 ### Snapshot
 | Command | Description |
@@ -760,7 +1033,7 @@ Refs are invalidated on navigation — run `snapshot` again after `goto`.
 | Command | Description |
 |---------|-------------|
 | `closetab [id]` | Close tab |
-| `newtab [url]` | Open new tab |
+| `newtab [url] [--json]` | Open new tab. With --json, returns {"tabId":N,"url":...} for programmatic use (make-pdf). |
 | `tab <id>` | Switch to tab |
 | `tabs` | List open tabs |
 

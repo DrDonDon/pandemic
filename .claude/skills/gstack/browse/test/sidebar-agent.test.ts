@@ -462,8 +462,11 @@ describe('per-tab agent concurrency', () => {
   test('sidebar-agent sends tabId with all events', () => {
     // sendEvent should accept tabId parameter
     expect(agentSrc).toContain('async function sendEvent(event: Record<string, any>, tabId?: number)');
-    // askClaude should extract tabId from queue entry
-    expect(agentSrc).toContain('const { prompt, args, stateFile, cwd, tabId }');
+    // askClaude destructures tabId from queue entry (regex tolerates
+    // additional fields like `canary` and `pageUrl` from security module).
+    expect(agentSrc).toMatch(
+      /const \{[^}]*\bprompt\b[^}]*\bargs\b[^}]*\bstateFile\b[^}]*\bcwd\b[^}]*\btabId\b[^}]*\}/
+    );
   });
 
   test('sidebar-agent allows concurrent agents across tabs', () => {
@@ -498,16 +501,20 @@ describe('BROWSE_TAB tab pinning (cross-tab isolation)', () => {
   });
 
   test('CLI reads BROWSE_TAB and sends tabId in command body', () => {
+    // BROWSE_TAB env var is still honored (sidebar-agent path). After the
+    // make-pdf refactor, the CLI layer now also accepts --tab-id <N>, with
+    // the CLI flag taking precedence over the env var. Both resolve to the
+    // same `tabId` body field.
     expect(cliSrc).toContain('process.env.BROWSE_TAB');
-    expect(cliSrc).toContain('tabId: parseInt(browseTab');
+    expect(cliSrc).toContain('parseInt(envTab, 10)');
   });
 
-  test('handleCommand accepts tabId from request body', () => {
+  test('handleCommandInternal accepts tabId from request body', () => {
     const handleFn = serverSrc.slice(
-      serverSrc.indexOf('async function handleCommand('),
-      serverSrc.indexOf('\nasync function ', serverSrc.indexOf('async function handleCommand(') + 1) > 0
-        ? serverSrc.indexOf('\nasync function ', serverSrc.indexOf('async function handleCommand(') + 1)
-        : serverSrc.indexOf('\n// ', serverSrc.indexOf('async function handleCommand(') + 200),
+      serverSrc.indexOf('async function handleCommandInternal('),
+      serverSrc.indexOf('\n/** HTTP wrapper', serverSrc.indexOf('async function handleCommandInternal(') + 1) > 0
+        ? serverSrc.indexOf('\n/** HTTP wrapper', serverSrc.indexOf('async function handleCommandInternal(') + 1)
+        : serverSrc.indexOf('\nasync function ', serverSrc.indexOf('async function handleCommandInternal(') + 200),
     );
     // Should destructure tabId from body
     expect(handleFn).toContain('tabId');
@@ -516,10 +523,10 @@ describe('BROWSE_TAB tab pinning (cross-tab isolation)', () => {
     expect(handleFn).toContain('switchTab(tabId');
   });
 
-  test('handleCommand restores active tab after command (success path)', () => {
+  test('handleCommandInternal restores active tab after command (success path)', () => {
     // On success, should restore savedTabId without stealing focus
     const handleFn = serverSrc.slice(
-      serverSrc.indexOf('async function handleCommand('),
+      serverSrc.indexOf('async function handleCommandInternal('),
       serverSrc.length,
     );
     // Count restore calls — should appear in both success and error paths
@@ -527,26 +534,29 @@ describe('BROWSE_TAB tab pinning (cross-tab isolation)', () => {
     expect(restoreCount).toBeGreaterThanOrEqual(2); // success + error paths
   });
 
-  test('handleCommand restores active tab on error path', () => {
+  test('handleCommandInternal restores active tab on error path', () => {
     // The catch block should also restore
     const catchBlock = serverSrc.slice(
-      serverSrc.indexOf('} catch (err: any) {', serverSrc.indexOf('async function handleCommand(')),
+      serverSrc.indexOf('} catch (err: any) {', serverSrc.indexOf('async function handleCommandInternal(')),
     );
     expect(catchBlock).toContain('switchTab(savedTabId');
   });
 
   test('tab pinning only activates when tabId is provided', () => {
     const handleFn = serverSrc.slice(
-      serverSrc.indexOf('async function handleCommand('),
-      serverSrc.indexOf('try {', serverSrc.indexOf('async function handleCommand(') + 1),
+      serverSrc.indexOf('async function handleCommandInternal('),
+      serverSrc.indexOf('try {', serverSrc.indexOf('async function handleCommandInternal(') + 1),
     );
     // Should check tabId is not undefined/null before switching
     expect(handleFn).toContain('tabId !== undefined');
     expect(handleFn).toContain('tabId !== null');
   });
 
-  test('CLI only sends tabId when BROWSE_TAB is set', () => {
-    // Should conditionally include tabId in the body
-    expect(cliSrc).toContain('browseTab ? { tabId:');
+  test('CLI only sends tabId when it is a valid number', () => {
+    // Body should conditionally include tabId. Historically that was keyed off
+    // the BROWSE_TAB env var. After the make-pdf refactor, the CLI also honors
+    // a --tab-id <N> flag on the CLI itself, so the check is "tabId defined
+    // AND not NaN" rather than literally inspecting the env var.
+    expect(cliSrc).toContain('tabId !== undefined && !isNaN(tabId)');
   });
 });
