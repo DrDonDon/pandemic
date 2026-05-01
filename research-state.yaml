@@ -1,0 +1,98 @@
+question: >
+  What regularity conditions on the spatially varying anomalous diffusion exponents
+  alpha(x) (space-fractional) and beta(x) (time-fractional) are necessary and sufficient
+  for the CTRW scaling limit to converge weakly to a well-defined limiting process?
+
+motivation: >
+  Large-scale applied systems (biological tissue, heterogeneous porous media, financial
+  microstructure) exhibit anomalous diffusion whose character changes across space.
+  The CTRW is the natural microscopic model. Without knowing when the macroscopic
+  (PDE) limit is valid, numerical simulations and parameter inference for these systems
+  rest on unverified foundations. Researcher has background with Angstman group (UNSW)
+  on CTRW and fractional Fokker-Planck.
+
+current_focus: "C1 — necessity direction (step-function counterexample first)"
+weeks_on_current_thread: 0
+
+# ── CONJECTURES ────────────────────────────────────────────────────────────────
+open_conjectures:
+  - id: C1
+    statement: >
+      REVISED (2026-04-05): Let alpha, beta: R -> (0,2) x (0,1) be measurable and bounded
+      away from 0 and their maxima. The rescaled CTRW X^epsilon converges weakly in D([0,T],R)
+      to a process whose density satisfies the variable-order fractional diffusion equation
+      d_t^{beta(x)} u = -(-Delta)^{alpha(x)/2} u  if and only if alpha and beta are continuous.
+      [Original "iff weak convergence" is likely wrong — step-function CTRW probably does
+      converge weakly under alpha_1-scaling, but to a scale mixture, not the variable-order PDE.]
+    precision: formalised
+    trivial_cases_checked: true
+    stepping_stone: "S1: show step-function alpha gives limit that is a scale mixture of alpha_1-stables, not a variable-order PDE solution"
+    evidence_for:
+      - "Constant-exponent case: Meerschaert-Scheffler (2004) — converges. Baseline."
+      - "Linear alpha(x): local parameter variation O(eps^{1/alpha}) -> 0 in scaling limit"
+      - "Umarov-Steinberg (2009): piecewise-constant order causes interface issues on PDE side"
+      - "Numerical (2026-04-05): step-function alpha1=1.2/alpha2=1.8 produces asymmetric tails — consistent with scale mixture of alpha_1-stables, not pure stable law"
+      - "Derive S1 (2026-04-05): alpha_2 contribution vanishes under n^{1/alpha_1} scaling (Lemma 1, proved). Scale mixture structure established modulo occupation time gap (G1-G2)."
+      - "Derive sufficiency (2026-04-05): generator convergence complete (Steps 1-4). Continuity of alpha enters in Prop 2 (equicontinuity bound omega_alpha(delta)->0). Tightness and limit-point identification complete. Gap: uniqueness of martingale problem for -(-Delta)^{alpha(x)/2}. Sharp threshold likely Dini-continuous."
+    evidence_against:
+      - "Step-function CTRW likely DOES converge weakly (under alpha_1-scaling) — falsifies original 'iff weak convergence' formulation. Revised to 'iff PDE characterisation holds'."
+    next_step: "Two open gaps remain: (1) S1 gap G1-G2: occupation time law for asymmetric stable walk — Bingham (1973) extension. (2) Sufficiency gap: well-posedness of martingale problem for -(-Delta)^{alpha(x)/2} with alpha in C^0. Sharp threshold likely Dini-continuous, not merely C^0. Open a new conjecture C2 on the sharp threshold."
+    weeks_active: 0
+
+proved: []
+
+disproved: []
+
+# ── LITERATURE ─────────────────────────────────────────────────────────────────
+adjacent_results:
+  - citation: "Straka (2018), Physica A 503:451-463, arXiv:1712.06767"
+    what_they_proved: "VOFFPEs with position-dependent beta(x) rigorously derived as governing equations of scaling limits of spatially inhomogeneous CTRWs, via weak convergence of bivariate Langevin process"
+    assumptions: "beta(x) in (0,1) spatially varying; drift/diffusion coefficients smooth enough for Langevin SDE. Exact regularity threshold on beta(x) not stated as a theorem."
+    how_it_relates: "proves sufficiency direction of C1 for beta(x) (time-fractional only) — CLOSEST PAPER"
+    gap: "Space-fractional alpha(x) not treated. Necessity direction (discontinuous beta fails) not addressed. Sharp regularity threshold on beta(x) not identified."
+
+  - citation: "Meerschaert & Straka (2014), Ann. Prob. 42(4):1699-1723, arXiv:1206.1960"
+    what_they_proved: "General semi-Markov framework for CTRW limits with coupled space-time dependent parameters; rigorous weak convergence in Skorokhod J1; explicit transition kernels"
+    assumptions: "Heavy-tailed waiting times; space-time dependent coupling allowed"
+    how_it_relates: "general framework accommodating spatially varying parameters; regularity threshold not the focus"
+    gap: "Sharp regularity threshold for spatial variation not identified. Necessity direction not addressed."
+
+  - citation: "Meerschaert & Scheffler (2008), Stoch. Proc. Appl. 118:1606-1633"
+    what_they_proved: "Triangular array functional limit theorems for CTRWs; limit is Levy process time-changed by subordinator; densities solve space-time fractional diffusion equations"
+    assumptions: "Constant exponents; power-law tails"
+    how_it_relates: "foundational constant-exponent baseline; proof template for C1 via localisation"
+    gap: "Does not address variable exponents"
+
+  - citation: "Wang & Zheng (2019), J. Math. Anal. Appl. 475:1778-1802"
+    what_they_proved: "Well-posedness of variable-order time-fractional diffusion PDEs; regularity depends on behavior of order function at t=0, not on spatial smoothness of alpha(x)"
+    assumptions: "Variable order in time; bounded spatial domain"
+    how_it_relates: "PDE-side evidence that temporal and spatial regularity requirements may decouple — relevant to whether alpha and beta conditions in C1 are independent"
+    gap: "PDE side only; no CTRW convergence. Space-fractional not treated."
+
+  - citation: "Fedotov & Falconer (2012), Phys. Rev. E 85:031132"
+    what_they_proved: "Structural instability of constant-exponent FFPE under small spatial variation in mu(x); anomalous aggregation replaces Gibbs-Boltzmann equilibrium"
+    assumptions: "CTRW on lattice with power-law waiting times, position-dependent exponent; external potential present"
+    how_it_relates: "indirect evidence for necessity — discontinuous/rapidly varying beta causes qualitative failure. Master equation derivation heuristic, not Skorokhod convergence."
+    gap: "Heuristic CTRW->PDE derivation. Space-fractional alpha(x) not treated. Necessity not proved."
+
+  - citation: "Gorenflo & Mainardi (2007), arXiv:0705.0797"
+    what_they_proved: "Rigorous Fourier-Laplace equivalence between power-law waiting-time CTRW and time-fractional diffusion equation; Mittag-Leffler universality"
+    assumptions: "Constant exponents; 1D; spatially homogeneous"
+    how_it_relates: "foundational; Fourier-Laplace approach may extend to variable exponents near a fixed point"
+    gap: "Constant exponents only"
+
+  - citation: "Chechkin, Gorenflo & Sokolov (2005), J. Phys. A 38:L679"
+    what_they_proved: "Heuristic derivation of fractional diffusion equation with spatially varying order from CTRW; two-region composite model with different exponents in each half-space"
+    assumptions: "Two-region piecewise-constant exponent; heuristic scaling argument"
+    how_it_relates: "directly models the step-function case of C1-S1 — but without rigorous convergence. Their two-region model is exactly the counterexample target."
+    gap: "Heuristic only. Does not prove or disprove convergence at the interface."
+
+# ── DEAD ENDS ──────────────────────────────────────────────────────────────────
+dead_ends: []
+
+# ── META ───────────────────────────────────────────────────────────────────────
+project_start: "2026-04-04"
+last_retro: ""
+owner: "DrDonDon"
+collaborators: ["Angstman group (UNSW) — prior work context"]
+tags: [anomalous-diffusion, CTRW, fractional-calculus, variable-order, scaling-limits]

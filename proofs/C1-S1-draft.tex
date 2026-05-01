@@ -1,0 +1,297 @@
+\documentclass{amsart}
+\usepackage{amsmath,amssymb,amsthm}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+
+\title{Proof attempt: S1 --- Step-function $\alpha$ and the necessity direction of C1}
+\date{2026-04-05}
+
+\begin{document}
+\maketitle
+
+\section*{Status}
+
+\textbf{Proof status: PARTIAL.}
+Steps 1--3 are complete. Step 4 (showing scale mixture is not variable-order stable)
+requires identifying the occupation time limit distribution, which is currently
+a \textbf{GAP}. The key structural result (step-function CTRW converges to a
+scale mixture, not a pure stable law) is established in principle; the gap is
+making it rigorous and connecting it to the PDE characterisation.
+
+\textbf{Unexpected finding:} The step-function CTRW does converge weakly (under
+$n^{1/\alpha_1}$ scaling). The conjecture C1 needs refinement: the failure mode
+for discontinuous $\alpha$ is not ``no convergence'' but ``convergence to a process
+that cannot be described by the variable-order PDE.''
+
+This changes the statement of C1. See Section~\ref{sec:revised}.
+
+\bigskip\hrule\bigskip
+
+\section{Setup}
+
+\textbf{Assumptions used in this document:}
+\begin{enumerate}
+    \item[(A1)] $\alpha_1, \alpha_2 \in (1, 2)$ with $\alpha_1 < \alpha_2$.
+                (Both greater than 1 ensures recurrence in each half-line.)
+    \item[(A2)] Discrete-time random walk: $X_n = \sum_{i=1}^n \xi_i$ where
+                $\xi_i$ is drawn, independently, from a symmetric $\alpha(X_{i-1})$-stable
+                distribution, where $\alpha(x) = \alpha_1 \mathbf{1}_{x < 0} +
+                \alpha_2 \mathbf{1}_{x \geq 0}$.
+    \item[(A3)] The $\alpha_j$-stable distributions are normalised so that
+                $\mathbf{E}[e^{ik\xi}] = e^{-c_j|k|^{\alpha_j}}$ for $c_j > 0$.
+    \item[(A4)] $X_0 = 0$.
+\end{enumerate}
+
+We work with the discrete-time walk to isolate the spatial effect (no waiting times).
+The CTRW case follows by subordination; see Remark~\ref{rem:ctrw}.
+
+\textbf{Notation.}
+\begin{align*}
+    \tau_n^- &= \#\{i \leq n : X_{i-1} < 0\} \quad \text{(steps in the $\alpha_1$ region)}, \\
+    \tau_n^+ &= n - \tau_n^- \quad \text{(steps in the $\alpha_2$ region)}.
+\end{align*}
+
+\section{Proof outline}
+
+\begin{enumerate}
+    \item Decompose $X_n$ into its $\alpha_1$- and $\alpha_2$-jump contributions.
+    \item Show that under scaling $a_n = n^{1/\alpha_1}$, the $\alpha_2$-contribution
+          is negligible and the $\alpha_1$-contribution dominates.
+    \item Identify the limit as a \emph{scale mixture} of $\alpha_1$-stable laws,
+          where the scale is driven by the occupation time $\tau_n^-/n$.
+    \item \textbf{[GAP]} Show this scale mixture is not a pure $\alpha$-stable law
+          for any $\alpha$, and cannot satisfy the variable-order fractional PDE.
+\end{enumerate}
+
+\section{Step 1: Decomposition}
+
+Conditionally on the trajectory $(X_0, X_1, \ldots, X_{n-1})$, the jumps
+$\xi_1, \ldots, \xi_n$ are independent. Define:
+\begin{align*}
+    S_n^{(1)} &= \sum_{\substack{i=1 \\ X_{i-1} < 0}}^n \xi_i
+               \quad \text{($\alpha_1$ jumps)}, \\
+    S_n^{(2)} &= \sum_{\substack{i=1 \\ X_{i-1} \geq 0}}^n \xi_i
+               \quad \text{($\alpha_2$ jumps)},
+\end{align*}
+so that $X_n = S_n^{(1)} + S_n^{(2)}$.
+
+The characteristic function of $X_n$ conditional on the trajectory is:
+\begin{equation}
+    \label{eq:conditional-cf}
+    \mathbf{E}\!\left[e^{ik X_n} \;\Big|\; (X_i)_{i<n}\right]
+    = \exp\!\left(-c_1 \tau_n^- |k|^{\alpha_1} - c_2 \tau_n^+ |k|^{\alpha_2}\right).
+\end{equation}
+This uses the fact that $\tau_n^-$ iid $\alpha_1$-stable jumps have CF
+$\exp(-c_1 \tau_n^- |k|^{\alpha_1})$, and similarly for $\tau_n^+$.
+
+\section{Step 2: Scaling --- $\alpha_2$ contribution vanishes}
+
+\begin{lemma}
+\label{lem:alpha2-vanishes}
+Under the rescaling $\tilde{X}_n = n^{-1/\alpha_1} X_n$, the contribution of
+$S_n^{(2)}$ to the characteristic function of $\tilde{X}_n$ vanishes as $n \to \infty$.
+\end{lemma}
+
+\begin{proof}
+The CF of $\tilde{X}_n$ conditional on the trajectory is, substituting $k \mapsto n^{-1/\alpha_1} k$
+in~\eqref{eq:conditional-cf}:
+\begin{align}
+    \label{eq:scaled-cf}
+    \exp\!\left(
+        -c_1 \tau_n^- \, n^{-1} |k|^{\alpha_1}
+        - c_2 \tau_n^+ \, n^{-\alpha_2/\alpha_1} |k|^{\alpha_2}
+    \right).
+\end{align}
+Since $\alpha_2 > \alpha_1$, we have $\alpha_2/\alpha_1 > 1$, so
+$n^{-\alpha_2/\alpha_1} \to 0$.
+Since $\tau_n^+ \leq n$, the second term satisfies:
+\[
+    c_2 \tau_n^+ n^{-\alpha_2/\alpha_1} |k|^{\alpha_2}
+    \leq c_2 n^{1 - \alpha_2/\alpha_1} |k|^{\alpha_2} \to 0
+\]
+for each fixed $k$.
+Hence the second exponential $\to e^0 = 1$ in~\eqref{eq:scaled-cf}.
+\end{proof}
+
+\begin{remark}
+Lemma~\ref{lem:alpha2-vanishes} shows that the $\alpha_2$ jumps are \emph{negligible}
+in the $\alpha_1$-scaling limit. Intuitively: $\alpha_2 > \alpha_1$ means the
+$\alpha_2$-stable jumps are lighter-tailed, so they contribute a smaller-order sum.
+\end{remark}
+
+\section{Step 3: The limit is a scale mixture of $\alpha_1$-stable laws}
+
+By Lemma~\ref{lem:alpha2-vanishes}, the CF of $\tilde{X}_n = n^{-1/\alpha_1} X_n$
+converges to the limit of:
+\[
+    \mathbf{E}\!\left[
+        \exp\!\left(-c_1 \frac{\tau_n^-}{n} |k|^{\alpha_1}\right)
+    \right].
+\]
+
+Now suppose that $\tau_n^-/n \to P$ in distribution, where $P$ is a $[0,1]$-valued
+random variable. Then by continuous mapping:
+\begin{equation}
+    \label{eq:mixture-cf}
+    \mathbf{E}\!\left[e^{ik\tilde{X}_n}\right]
+    \;\longrightarrow\;
+    \mathbf{E}\!\left[\exp(-c_1 P |k|^{\alpha_1})\right]
+    = \mathcal{L}_{P}\!\left(c_1 |k|^{\alpha_1}\right),
+\end{equation}
+where $\mathcal{L}_P$ denotes the Laplace transform of $P$.
+
+This is the CF of a \textbf{scale mixture of symmetric $\alpha_1$-stable laws}:
+\[
+    \tilde{X}_\infty \overset{d}{=} P^{1/\alpha_1} Z_{\alpha_1},
+\]
+where $Z_{\alpha_1}$ is a standard symmetric $\alpha_1$-stable random variable
+independent of $P$.
+
+\begin{proposition}
+\label{prop:not-stable}
+If $P$ is non-degenerate (i.e., not a.s.\ constant), then $\tilde{X}_\infty$
+is \emph{not} $\alpha$-stable for any $\alpha \in (0,2)$.
+\end{proposition}
+
+\begin{proof}
+A random variable $Y$ is $\alpha$-stable iff its CF has the form
+$\exp(-c|k|^\alpha)$ for some $c > 0$. The CF of $P^{1/\alpha_1} Z_{\alpha_1}$
+is $\mathcal{L}_P(c_1|k|^{\alpha_1})$. For this to equal $\exp(-c|k|^\alpha)$
+for some $\alpha, c$, we need:
+\[
+    \mathcal{L}_P(s) = e^{-c \, s^{\alpha/\alpha_1}} \quad \text{for all } s > 0.
+\]
+This is the Laplace transform of a $(\alpha/\alpha_1)$-stable positive random variable.
+If $\alpha = \alpha_1$, this requires $\mathcal{L}_P(s) = e^{-cs}$, i.e.\ $P$ is
+exponentially distributed --- but $P \in [0,1]$ a.s., which is impossible for an
+exponential distribution. For $\alpha \neq \alpha_1$, the Laplace transform is that
+of an $(\alpha/\alpha_1)$-stable distribution supported on $(0,\infty)$, which has
+unbounded support --- again incompatible with $P \in [0,1]$.
+
+Hence $\tilde{X}_\infty$ is not $\alpha$-stable for any $\alpha$.
+\end{proof}
+
+\section{Step 4 [GAP]: Occupation time distribution and connection to the PDE}
+
+\subsection{The gap}
+
+Equation~\eqref{eq:mixture-cf} requires that $\tau_n^-/n$ converges in distribution.
+This is an \textbf{open step}. Two sub-questions:
+
+\begin{enumerate}
+    \item[(G1)] Does $\tau_n^-/n$ converge in distribution as $n \to \infty$?
+    \item[(G2)] Is the limit $P$ non-degenerate?
+\end{enumerate}
+
+For the simple symmetric random walk ($\alpha_1 = \alpha_2 = 2$), the
+arc-sine law gives $\tau_n^-/n \to \text{ArcSine}(1/2, 1/2)$, which is
+non-degenerate. For $\alpha$-stable walks with $\alpha_1 = \alpha_2 < 2$,
+an analogous arc-sine law holds (Bingham 1973). For the \emph{asymmetric}
+case $\alpha_1 \neq \alpha_2$, the occupation time distribution is not
+standard and requires separate analysis.
+
+\textbf{Conjecture for G1-G2:} For $\alpha_1, \alpha_2 \in (1,2)$ with $\alpha_1 < \alpha_2$,
+the occupation time $\tau_n^-/n$ converges in distribution to a non-degenerate
+Beta-like distribution on $[0,1]$, by an extension of the arc-sine law for
+recurrent Markov chains.
+
+\subsection{Connection to the PDE (once the gap is closed)}
+
+Assuming G1-G2, Proposition~\ref{prop:not-stable} establishes that $\tilde{X}_\infty$
+is \emph{not} $\alpha$-stable for any $\alpha$. In particular:
+
+\begin{enumerate}
+    \item The limit process is not a symmetric $\alpha_1$-stable process.
+    \item The limit process is not a symmetric $\alpha_2$-stable process.
+    \item The CF is not of the form $\exp(-c|k|^{\alpha(x)})$ for any function $\alpha(x)$
+          that is the characteristic exponent of the variable-order PDE
+          $\partial_t^\beta u = -(-\Delta)^{\alpha(x)/2} u$.
+\end{enumerate}
+
+Therefore, if the variable-order CTRW framework is defined as "converges to a process
+whose density satisfies the variable-order PDE," then the step-function CTRW does
+\emph{not} converge in that sense --- even though it converges weakly in
+$D([0,T], \mathbb{R})$.
+
+\section{Revised conjecture}
+\label{sec:revised}
+
+The counterexample analysis suggests that C1 as stated is incorrect: the step-function
+CTRW likely DOES converge weakly (under $n^{1/\alpha_1}$ scaling). The failure mode is
+not absence of convergence, but convergence to the \emph{wrong} limit.
+
+\textbf{Proposed revised statement of C1:}
+
+\medskip
+\noindent\textbf{C1' (Revised).}
+\textit{Let $\alpha, \beta \colon \mathbb{R} \to \mathbb{R}$ be measurable and bounded
+away from 0 and their respective maxima. The rescaled CTRW $X^\epsilon$ converges weakly
+in $D([0,T], \mathbb{R})$ to a process whose one-dimensional distributions satisfy the
+variable-order fractional diffusion equation
+$\partial_t^{\beta(x)} u = -(-\Delta)^{\alpha(x)/2} u$
+if and only if $\alpha$ and $\beta$ are continuous.}
+\medskip
+
+Under this revision:
+\begin{itemize}
+    \item Discontinuous $\alpha$: convergence may hold, but the limit is a scale
+          mixture (not variable-order PDE). The limit fails the PDE characterisation.
+    \item Continuous $\alpha$ (sufficiency, still open): the local scaling is consistent
+          and the limit satisfies the variable-order PDE.
+\end{itemize}
+
+\section{What the numerical simulation established}
+
+The simulation with $\alpha_1 = 1.2$, $\alpha_2 = 1.8$, $n = 800$ steps showed:
+\begin{itemize}
+    \item Asymmetric left/right tails (Hill estimates 1.366 vs.\ 1.076), consistent
+          with a scale mixture of $\alpha_1$-stable laws whose effective left and right
+          tail parameters differ due to the asymmetric mixing.
+    \item Varying local CF exponent (not constant in $k$), consistent with a mixture
+          distribution rather than a pure stable law.
+    \item Under neither $\alpha_1$- nor $\alpha_2$-scaling does the step walk produce
+          the corresponding stable distribution shape.
+\end{itemize}
+
+\begin{remark}
+\label{rem:ctrw}
+The discrete-time walk result extends to the CTRW by subordination. With spatially
+constant $\beta$ (waiting time exponent), the CTRW is a time-change of the random walk
+by an inverse $\beta$-stable subordinator $E_\beta(t)$. The scaling limit of the
+spatial walk already converges to a scale mixture of $\alpha_1$-stables; time-changing
+by $E_\beta$ gives a time-changed scale mixture, which is likewise not a variable-order
+fractional diffusion process.
+\end{remark}
+
+\section{Summary}
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Step & Content & Status \\
+\hline
+1 & Decompose $X_n = S_n^{(1)} + S_n^{(2)}$ & Complete \\
+2 & $\alpha_2$ contribution vanishes under $n^{1/\alpha_1}$ scaling & Complete \\
+3 & Limit is scale mixture of $\alpha_1$-stables (Prop.~\ref{prop:not-stable}) & Complete modulo G1-G2 \\
+4 & Occupation time $\tau_n^-/n$ converges to non-degenerate $P$ & \textbf{GAP} \\
+5 & Scale mixture $\neq$ variable-order PDE solution & Complete modulo G1-G2 \\
+\hline
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{The open gap (G1-G2)} is an occupation time law for asymmetric-exponent
+stable walks. This is likely provable by extending Bingham's (1973) arc-sine law
+for recurrent Markov chains to the asymmetric case. This is the recommended next
+step before submitting this proof.
+
+\medskip
+\textbf{Recommended action}: run \texttt{/literature-scout} specifically for
+occupation time laws for position-dependent stable random walks. Then close G1-G2.
+
+\end{document}

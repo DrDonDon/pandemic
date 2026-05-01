@@ -1,0 +1,57 @@
+# research-state.yaml
+# Living document. Updated by all mathstack skills.
+# Commit this file regularly — it is the memory of the project.
+
+question: >
+  One sentence: what is the core mathematical question being investigated?
+
+motivation: >
+  Why does this question matter? What breaks down if we can't answer it?
+  What applied problem does it arise from?
+
+current_focus: ""          # which conjecture or thread is active right now
+weeks_on_current_thread: 0 # reset when focus changes; research-director watches this
+
+# ── CONJECTURES ────────────────────────────────────────────────────────────────
+open_conjectures:
+  - id: C1
+    statement: ""
+    precision: draft        # draft | stated | formalised
+    evidence_for: []
+    evidence_against: []
+    next_step: ""
+    weeks_active: 0
+
+proved:
+  - id: ""
+    statement: ""
+    proof_file: ""          # path to .tex or .md file with the proof
+    date: ""
+
+disproved:
+  - id: ""
+    statement: ""
+    counterexample: ""      # describe or reference the counterexample
+    lesson: ""              # what does the disproof tell us?
+    date: ""
+
+# ── LITERATURE ─────────────────────────────────────────────────────────────────
+adjacent_results:
+  - citation: ""
+    what_they_proved: ""
+    how_it_relates: ""      # extends / contradicts / analogous / prerequisite
+    gap: ""                 # what they didn't do that we might
+
+# ── DEAD ENDS ──────────────────────────────────────────────────────────────────
+# Keep a brief index here; full details go in dead-ends.md
+dead_ends:
+  - approach: ""
+    why_failed: ""
+    date: ""
+
+# ── META ───────────────────────────────────────────────────────────────────────
+project_start: ""
+last_retro: ""
+owner: ""
+collaborators: []
+tags: []
